@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,15 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#211C1A;
-  --paper:#F7F3EC;
-  --stone:#EAE3D6;
-  --stone-dark:#D8CDB8;
-  --rust:#B4502A;
-  --rust-dark:#8F3D1E;
-  --olive:#5B6B4F;
-  --gold:#B08D3E;
-  --muted:#7A7266;
+  --ink:#05243a;
+  --paper:#EAF6FF;
+  --stone:#CFE9FF;
+  --stone-dark:#B7E0FF;
+  --rust:#2B9FFF; /* primary skyblue accent */
+  --rust-dark:#1F7FC8;
+  --olive:#386b87;
+  --gold:#FFD166;
+  --muted:#5A6B75;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -86,8 +85,8 @@ header.main{
 .shop-rail-head span{font-size:12px;color:#C9C2B4;font-family:'Inter';}
 .shop-rail{display:flex;gap:14px;overflow-x:auto;padding:0 28px 6px;scrollbar-width:thin;}
 .shop-chip{
-  flex-shrink:0;width:150px;background:#2C2622;border:1.5px solid #3c352f;border-radius:10px;
-  padding:14px;cursor:pointer;transition:border-color .12s,transform .12s;
+  flex-shrink:0;width:150px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(5,36,58,0.02));border:1.5px solid rgba(5,36,58,0.06);border-radius:10px;
+  padding:14px;cursor:pointer;transition:border-color .12s,transform .12s;backdrop-filter:blur(2px);
 }
 .shop-chip:hover, .shop-chip.active{border-color:var(--rust);transform:translateY(-2px);}
 .shop-chip .cover{height:56px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:8px;overflow:hidden;}
@@ -118,7 +117,7 @@ select.sortSelect{padding:8px 12px;border:1.5px solid var(--stone-dark);border-r
   transition:box-shadow .15s, transform .15s;
 }
 .item-card:hover{box-shadow:0 8px 22px rgba(33,28,26,0.1);transform:translateY(-2px);}
-.item-thumb{height:180px;display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;color:#fff;}
+.item-thumb{height:180px;display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;color:rgba(255,255,255,0.95);background-size:cover;background-position:center;border-radius:8px;box-shadow:0 6px 18px rgba(5,36,58,0.06);}
 .item-shop-tag{
   position:absolute;top:8px;left:8px;background:rgba(255,255,255,0.92);color:var(--ink);
   font-size:10px;font-weight:700;padding:3px 9px;border-radius:100px;letter-spacing:0.02em;
@@ -135,7 +134,7 @@ select.sortSelect{padding:8px 12px;border:1.5px solid var(--stone-dark);border-r
 .modal{background:#fff;border-radius:14px;max-width:640px;width:100%;overflow:hidden;animation:pop .18s ease;}
 @keyframes pop{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 .modal-close{position:absolute;top:14px;right:18px;font-size:22px;color:var(--muted);background:none;border:none;z-index:2;}
-.modal-hero{height:230px;display:flex;align-items:center;justify-content:center;font-size:70px;position:relative;color:#fff;overflow:hidden;}
+.modal-hero{height:230px;display:flex;align-items:center;justify-content:center;font-size:70px;position:relative;color:rgba(255,255,255,0.95);overflow:hidden;border-bottom:1px solid rgba(5,36,58,0.04);}
 .modal-content{padding:22px 26px 26px;position:relative;}
 .modal-content h2{font-size:23px;margin:0 0 4px;}
 .modal-price{font-family:'Playfair Display';font-size:28px;font-weight:800;color:var(--rust);margin:6px 0;}
@@ -203,6 +202,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     <button onclick="doSearch()">Search</button>
   </div>
   <div class="header-ctas">
+    <button class="btn btn-outline" onclick="openOwnerLoginModal()">Shop Login</button>
     <button class="btn btn-outline" onclick="openShopModal()">+ Register Your Shop</button>
   </div>
 </header>
@@ -292,6 +292,14 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 
 <div class="toast" id="toast"></div>
 
+<!-- Shop owner overlay -->
+<div class="overlay" id="ownerOverlay">
+  <div class="modal" style="position:relative;max-width:560px;max-height:88vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('ownerOverlay')">×</button>
+    <div class="modal-content" style="padding-top:34px;" id="ownerModalBody"></div>
+  </div>
+</div>
+
 <script>
 /* ================= DATA ================= */
 const categories = [
@@ -305,19 +313,19 @@ const categories = [
 ];
 
 let shops = [
-  {id:1, name:"Beirut Threads", phone:"96170123456", location:"Hamra, Beirut", categories:["Men's Wear","Women's Wear"], description:"Contemporary streetwear and everyday essentials.", cover:null},
-  {id:2, name:"Little Stars Kids", phone:"96181234567", location:"Jounieh", categories:["Kids' Wear"], description:"Playful, durable clothing for kids 0–12.", cover:null},
-  {id:3, name:"SoleMate Shoes", phone:"96176543210", location:"Achrafieh, Beirut", categories:["Shoes"], description:"Sneakers, boots and everyday shoes for the whole family.", cover:null},
+  {id:1, name:"Beirut Threads", phone:"96170123456", password:"demo123", location:"Hamra, Beirut", categories:["Men's Wear","Women's Wear"], description:"Contemporary streetwear and everyday essentials.", cover:null},
+  {id:2, name:"Little Stars Kids", phone:"96181234567", password:"demo123", location:"Jounieh", categories:["Kids' Wear"], description:"Playful, durable clothing for kids 0–12.", cover:null},
+  {id:3, name:"SoleMate Shoes", phone:"96176543210", password:"demo123", location:"Achrafieh, Beirut", categories:["Shoes"], description:"Sneakers, boots and everyday shoes for the whole family.", cover:null},
 ];
 
 let items = [
-  {id:11, shopId:1, name:"Classic Denim Jacket", description:"Mid-wash denim jacket, unisex fit, sizes S–XL.", price:"$42", category:"Men's Wear", photo:null},
-  {id:12, shopId:1, name:"Linen Summer Dress", description:"Breathable linen dress, available in 4 colors.", price:"$38", category:"Women's Wear", photo:null},
-  {id:13, shopId:1, name:"Everyday Crewneck Tee", description:"100% cotton, pre-shrunk, unisex.", price:"$14", category:"Men's Wear", photo:null},
-  {id:21, shopId:2, name:"Dino Print Hoodie", description:"Soft fleece hoodie for ages 4–8.", price:"$19", category:"Kids' Wear", photo:null},
-  {id:22, shopId:2, name:"School Uniform Set", description:"Polo + trousers set, ages 6–12.", price:"$27", category:"Kids' Wear", photo:null},
-  {id:31, shopId:3, name:"Running Sneakers", description:"Lightweight mesh runners, great for daily wear.", price:"$55", category:"Shoes", photo:null},
-  {id:32, shopId:3, name:"Leather Boots", description:"Genuine leather ankle boots, hand-stitched sole.", price:"$89", category:"Shoes", photo:null},
+  {id:11, shopId:1, name:"Classic Denim Jacket", description:"Mid-wash denim jacket, unisex fit, sizes S–XL.", price:"$42", category:"Men's Wear", photo:null, inStock:true},
+  {id:12, shopId:1, name:"Linen Summer Dress", description:"Breathable linen dress, available in 4 colors.", price:"$38", category:"Women's Wear", photo:null, inStock:true},
+  {id:13, shopId:1, name:"Everyday Crewneck Tee", description:"100% cotton, pre-shrunk, unisex.", price:"$14", category:"Men's Wear", photo:null, inStock:false},
+  {id:21, shopId:2, name:"Dino Print Hoodie", description:"Soft fleece hoodie for ages 4–8.", price:"$19", category:"Kids' Wear", photo:null, inStock:true},
+  {id:22, shopId:2, name:"School Uniform Set", description:"Polo + trousers set, ages 6–12.", price:"$27", category:"Kids' Wear", photo:null, inStock:true},
+  {id:31, shopId:3, name:"Running Sneakers", description:"Lightweight mesh runners, great for daily wear.", price:"$55", category:"Shoes", photo:null, inStock:true},
+  {id:32, shopId:3, name:"Leather Boots", description:"Genuine leather ankle boots, hand-stitched sole.", price:"$89", category:"Shoes", photo:null, inStock:true},
 ];
 
 let pendingShops = [
@@ -342,11 +350,11 @@ function shopById(id){ return shops.find(s=>s.id===id); }
 function priceNum(item){ return parseFloat((item.price||'').replace(/[^0-9.]/g,''))||0; }
 function thumbGradient(seed){
   const grads = [
-    "linear-gradient(135deg,#B4502A,#7a341c)",
-    "linear-gradient(135deg,#5B6B4F,#39432f)",
-    "linear-gradient(135deg,#B08D3E,#7a5f24)",
-    "linear-gradient(135deg,#211C1A,#3a3733)",
-    "linear-gradient(135deg,#7A7266,#3a3733)",
+    "linear-gradient(135deg,#E8F8FF,#D2EDFF)",
+    "linear-gradient(135deg,#FFF5F6,#FFE6EA)",
+    "linear-gradient(135deg,#F2FAFF,#D9F0FF)",
+    "linear-gradient(135deg,#FFF9ED,#FFF1D6)",
+    "linear-gradient(135deg,#F7FBFF,#E6F4FF)",
   ];
   return grads[Math.abs(seed) % grads.length];
 }
@@ -412,6 +420,7 @@ function renderItems(){
   if(sortMode==='price_asc') filtered.sort((a,b)=>priceNum(a)-priceNum(b));
   else if(sortMode==='price_desc') filtered.sort((a,b)=>priceNum(b)-priceNum(a));
   else filtered.sort((a,b)=> shops.findIndex(s=>s.id===a.shopId) - shops.findIndex(s=>s.id===b.shopId));
+  filtered.sort((a,b)=> (b.inStock!==false) - (a.inStock!==false)); // in-stock items first, stable within existing sort
 
   document.getElementById('filterLabel').textContent = [shopFilter?shopById(shopFilter).name:null, categoryFilter].filter(Boolean).join(" · ") ? "— " + [shopFilter?shopById(shopFilter).name:null, categoryFilter].filter(Boolean).join(" · ") : "";
   document.getElementById('resultCount').textContent = filtered.length + " items";
@@ -419,10 +428,12 @@ function renderItems(){
   const grid = document.getElementById('itemsGrid');
   grid.innerHTML = filtered.map((it,i)=>{
     const shop = shopById(it.shopId);
+    const oos = it.inStock===false;
     return `
-    <div class="item-card" onclick="openItemModal(${it.id})">
+    <div class="item-card" onclick="openItemModal(${it.id})" style="${oos?'opacity:0.65;':''}">
       <div class="item-thumb" style="background:${it.photo?'#000':thumbGradient(it.id+i)}">
         <div class="item-shop-tag">${shop?shop.name:'Shop'}</div>
+        ${oos?`<div style="position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:100px;">OUT OF STOCK</div>`:''}
         ${thumbHTML(it)}
       </div>
       <div class="item-body">
@@ -457,19 +468,21 @@ function openTerms(){
 function openItemModal(id){
   const it = items.find(x=>x.id===id);
   const shop = shopById(it.shopId);
+  const oos = it.inStock===false;
   const body = document.getElementById('itemModalBody');
   body.innerHTML = `
-    <div class="modal-hero" style="background:${it.photo?'#000':thumbGradient(it.id)};">${thumbHTML(it)}</div>
+    <div class="modal-hero" style="background:${it.photo?'#000':thumbGradient(it.id)};${oos?'filter:grayscale(0.4);':''}">${thumbHTML(it)}</div>
     <div class="modal-content">
       <h2>${it.name}</h2>
       <div class="modal-price">${it.price}</div>
+      ${oos ? `<div style="background:var(--stone);color:var(--ink);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:inline-block;">Currently out of stock</div>` : ''}
       <div class="modal-meta">${it.description} <br>Category: ${it.category}</div>
       <div class="shop-box">
         <div class="sname">${shop.name}</div>
         <div class="sloc">📍 ${shop.location}</div>
       </div>
       <div class="action-row">
-        <a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Store Online.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a>
+        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Store Online.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a>`}
         <a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>
       </div>
     </div>
@@ -497,6 +510,7 @@ function renderShopStep1(){
     <p class="modal-meta">Tell us about your shop. An admin will review before it goes live.</p>
     <div class="form-field"><label>Shop name</label><input id="sName" placeholder="e.g. Beirut Threads"></div>
     <div class="form-field"><label>Phone number</label><input id="sPhone" placeholder="+961 3 xxx xxx"></div>
+    <div class="form-field"><label>Set a dashboard password</label><input id="sPassword" type="password" placeholder="Used to log into your shop panel later"></div>
     <div class="form-field"><label>Shop location</label><input id="sLocation" placeholder="e.g. Hamra, Beirut"></div>
     <div class="form-field"><label>Categories you sell</label>
       <div class="checkbox-grid" id="sCategories">
@@ -531,18 +545,19 @@ function previewShopCover(e){
 function goToItemsStep(){
   const name = document.getElementById('sName').value.trim();
   const phone = document.getElementById('sPhone').value.trim();
+  const password = document.getElementById('sPassword').value;
   const location = document.getElementById('sLocation').value.trim();
   const desc = document.getElementById('sDesc').value.trim();
   const selectedCats = Array.from(document.querySelectorAll('#sCategories .check-pill.active')).map(el=>el.dataset.cat);
-  if(!name || !phone || !location){
-    showToast('Please fill in your shop name, phone, and location.');
+  if(!name || !phone || !location || !password){
+    showToast('Please fill in your shop name, phone, location, and a dashboard password.');
     return;
   }
   if(selectedCats.length===0){
     showToast('Select at least one category your shop sells.');
     return;
   }
-  shopDraft = {name, phone, location, description:desc, categories:selectedCats, cover:shopCoverData};
+  shopDraft = {name, phone, password, location, description:desc, categories:selectedCats, cover:shopCoverData};
   renderItemsStep();
 }
 
@@ -609,6 +624,7 @@ function submitShopRegistration(){
     id: Date.now(),
     name: shopDraft.name,
     phone: shopDraft.phone,
+    password: shopDraft.password,
     location: shopDraft.location,
     categories: shopDraft.categories,
     description: shopDraft.description,
@@ -729,10 +745,10 @@ function sendShopMessage(){
 function approveShop(id){
   const s = pendingShops.find(x=>x.id===id);
   if(!s) return;
-  const newShop = {id:s.id, name:s.name, phone:s.phone, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
+  const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
   shops.push(newShop);
   s.draftItems.forEach((it,i)=>{
-    items.push({id: s.id*100+i, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, photo:it.photo});
+    items.push({id: s.id*100+i, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, photo:it.photo, inStock:true});
   });
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
@@ -817,6 +833,335 @@ function deleteItem(id){
 renderShopRail();
 renderCatGrid();
 renderItems();
+
+/* ================= Shop Owner Panel ================= */
+let loggedInShopId = null;
+let ownerItemDraft = null; // item being added/edited
+let ownerEditingItemId = null;
+
+function openOwnerLoginModal(){
+  renderOwnerTabs('ownerLogin');
+  document.getElementById('ownerOverlay').classList.add('open');
+}
+function ownerLogin(){
+  const phone = document.getElementById('ownerPhone').value.trim();
+  const pass = document.getElementById('ownerPass').value;
+  const errBox = document.getElementById('ownerLoginError');
+  const shop = shops.find(s=>s.phone===phone && s.password===pass);
+  if(shop){
+    errBox.style.display='none';
+    loggedInShopId = shop.id;
+    renderOwnerDashboard();
+    return;
+  }
+  const pending = pendingShops.find(s=>s.phone===phone && s.password===pass);
+  if(pending){
+    errBox.style.display='none';
+    document.getElementById('ownerModalBody').innerHTML = `
+      <h2>Almost there</h2>
+      <p class="modal-meta">Your shop <b>${pending.name}</b> is registered but still awaiting admin approval. Once approved, log in here to manage your items.</p>
+      <button class="btn btn-outline" style="width:100%;" onclick="closeModal('ownerOverlay')">Close</button>
+    `;
+    return;
+  }
+  errBox.textContent = 'No shop found with that phone number and password.';
+  errBox.style.display='block';
+}
+
+/* Owner/customer tab UI helpers */
+let customers = [];
+let currentCustomerId = null;
+
+function renderOwnerTabs(active){
+  const body = document.getElementById('ownerModalBody');
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <button id="tabOwnerLogin" class="btn btn-outline btn-sm">Shop owner — Login</button>
+      <button id="tabOwnerRegister" class="btn btn-outline btn-sm">Shop owner — Register</button>
+      <button id="tabCustomer" class="btn btn-outline btn-sm">Customer account</button>
+    </div>
+    <div id="ownerTabContent"></div>
+  `;
+  document.getElementById('tabOwnerLogin').onclick = ()=> renderOwnerLoginTab();
+  document.getElementById('tabOwnerRegister').onclick = ()=> renderOwnerRegisterTab();
+  document.getElementById('tabCustomer').onclick = ()=> renderCustomerAccountTab();
+  if(active==='ownerRegister') renderOwnerRegisterTab();
+  else if(active==='customer') renderCustomerAccountTab();
+  else renderOwnerLoginTab();
+}
+
+function renderOwnerLoginTab(){
+  const cont = document.getElementById('ownerTabContent');
+  cont.innerHTML = `
+    <h2>Shop login</h2>
+    <p class="modal-meta">Log in with the phone number and password you set when registering your shop.</p>
+    <div class="form-field"><label>Phone number</label><input id="ownerPhone" placeholder="+961 3 xxx xxx"></div>
+    <div class="form-field"><label>Password</label><input id="ownerPass" type="password" placeholder="••••••••"></div>
+    <div id="ownerLoginError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="ownerLogin()">Log in</button>
+    <p style="font-size:11.5px;color:var(--muted);margin-top:12px;">Demo shops: try 96170123456 / demo123 (Beirut Threads).</p>
+  `;
+}
+
+function renderOwnerRegisterTab(){
+  const cont = document.getElementById('ownerTabContent');
+  cont.innerHTML = `
+    <h2>Register your shop</h2>
+    <p class="modal-meta">Create your account and set a dashboard password, then complete your shop details.</p>
+    <div class="form-field"><label>Phone number</label><input id="regPhone" placeholder="+961 3 xxx xxx"></div>
+    <div class="form-field"><label>Set a dashboard password</label><input id="regPass" type="password" placeholder="Used to log into your shop panel later"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="quickRegisterOwner()">Create account & continue</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="openShopModal()">Full shop registration</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Choosing "Create account & continue" will create a lightweight owner account; use "Full shop registration" to submit a full shop listing for admin review (recommended).</div>
+  `;
+}
+
+function quickRegisterOwner(){
+  const phone = document.getElementById('regPhone').value.trim();
+  const pass = document.getElementById('regPass').value;
+  if(!phone || !pass){ showToast('Enter phone and password to create an account.'); return; }
+  // create a placeholder pending shop so owner can later complete full registration
+  pendingShops.push({ id: Date.now(), name: 'Your shop (incomplete)', phone, password:pass, location:'', categories:[], description:'', cover:null, draftItems:[] });
+  showToast('Account created. Please complete your shop details via Register your shop.');
+  openShopModal();
+}
+
+function renderCustomerAccountTab(){
+  const cont = document.getElementById('ownerTabContent');
+  cont.innerHTML = `
+    <h2>Customer account</h2>
+    <p class="modal-meta">Register or log in to save favourites and contact shops easily.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <div style="font-weight:700;margin-bottom:6px;">New customer</div>
+        <div class="form-field"><label>Name</label><input id="custName"></div>
+        <div class="form-field"><label>Phone</label><input id="custPhone"></div>
+        <div class="form-field"><label>Password</label><input id="custPass" type="password"></div>
+        <button class="btn btn-primary" style="width:100%;" onclick="customerRegister()">Create account</button>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:6px;">Existing customer</div>
+        <div class="form-field"><label>Phone</label><input id="custLoginPhone"></div>
+        <div class="form-field"><label>Password</label><input id="custLoginPass" type="password"></div>
+        <button class="btn btn-outline" style="width:100%;" onclick="customerLogin()">Log in</button>
+      </div>
+    </div>
+  `;
+}
+
+function customerRegister(){
+  const name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  const pass = document.getElementById('custPass').value;
+  if(!name || !phone || !pass){ showToast('Please provide name, phone and password.'); return; }
+  if(customers.find(c=>c.phone===phone)){ showToast('Phone already registered.'); return; }
+  const id = Date.now();
+  customers.push({id,name,phone,password:pass});
+  currentCustomerId = id;
+  showToast('Account created. You are now logged in.');
+  renderCustomerDashboard();
+}
+
+function customerLogin(){
+  const phone = document.getElementById('custLoginPhone').value.trim();
+  const pass = document.getElementById('custLoginPass').value;
+  const c = customers.find(x=>x.phone===phone && x.password===pass);
+  if(!c){ showToast('Invalid customer phone or password.'); return; }
+  currentCustomerId = c.id;
+  showToast('Logged in.');
+  renderCustomerDashboard();
+}
+
+function renderCustomerDashboard(){
+  const cont = document.getElementById('ownerTabContent');
+  const c = customers.find(x=>x.id===currentCustomerId);
+  cont.innerHTML = `
+    <h2>Welcome${c?(', '+c.name):''}</h2>
+    <p class="modal-meta">Customer accounts are for demo purposes. You can contact shops directly while logged in.</p>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-outline" onclick="currentCustomerId=null;renderOwnerTabs('customer')">Account details</button>
+      <button class="btn btn-primary" onclick="customerLogout()">Log out</button>
+    </div>
+  `;
+}
+
+function customerLogout(){ currentCustomerId = null; showToast('Logged out.'); renderOwnerTabs('customer'); }
+function ownerLogout(){
+  loggedInShopId = null;
+  closeModal('ownerOverlay');
+  showToast('Logged out of shop panel.');
+}
+function currentOwnerShop(){ return shops.find(s=>s.id===loggedInShopId); }
+
+function renderOwnerDashboard(){
+  const shop = currentOwnerShop();
+  if(!shop){ loggedInShopId=null; return; }
+  const myItems = items.filter(it=>it.shopId===shop.id);
+  const body = document.getElementById('ownerModalBody');
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <h2 style="margin-bottom:2px;">${shop.name}</h2>
+        <div style="font-size:12.5px;color:var(--muted);">📍 ${shop.location} · ${myItems.length} item${myItems.length===1?'':'s'} live</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="ownerLogout()">Log out</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:16px 0;">
+      <button class="btn btn-primary" style="flex:1;" onclick="ownerAddItemForm()">+ Add new item</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="ownerEditShopForm()">Edit shop info</button>
+    </div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Your items</div>
+    <div id="ownerItemsList">
+      ${myItems.length ? myItems.map(it=>`
+        <div class="review-box" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;${it.inStock?'':'opacity:0.6;'}">
+          <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${it.photo?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price} ${it.inStock?'':'<span style="color:var(--rust);font-weight:700;">· OUT OF STOCK</span>'}</div>
+            <div style="font-size:11px;color:var(--muted);">${it.category}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:180px;">
+            <button class="btn btn-outline btn-sm" onclick="ownerToggleStock(${it.id})">${it.inStock?'Mark out of stock':'Mark in stock'}</button>
+            <button class="btn btn-outline btn-sm" onclick="ownerEditItemForm(${it.id})">Edit</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--rust);border-color:var(--rust);" onclick="ownerDeleteItem(${it.id})">Delete</button>
+          </div>
+        </div>
+      `).join("") : `<p style="color:var(--muted);font-size:13px;">You haven't listed anything yet.</p>`}
+    </div>
+  `;
+}
+
+function ownerAddItemForm(){
+  ownerEditingItemId = null;
+  ownerItemDraft = {name:"",description:"",price:"",category:currentOwnerShop().categories[0]||categories[0].name,photo:null};
+  renderOwnerItemForm('Add new item');
+}
+function ownerEditItemForm(id){
+  const it = items.find(x=>x.id===id);
+  ownerEditingItemId = id;
+  ownerItemDraft = {name:it.name, description:it.description, price:it.price, category:it.category, photo:it.photo};
+  renderOwnerItemForm('Edit item');
+}
+function renderOwnerItemForm(title){
+  const body = document.getElementById('ownerModalBody');
+  body.innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="renderOwnerDashboard()">← Back</button>
+    <h2 style="margin-top:12px;">${title}</h2>
+    <div class="form-field"><label>Item name</label><input id="oiName" value="${ownerItemDraft.name}" placeholder="e.g. Classic Denim Jacket"></div>
+    <div class="form-field"><label>Description</label><textarea id="oiDesc" placeholder="Fabric, fit, sizes available…">${ownerItemDraft.description}</textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-field"><label>Price</label><input id="oiPrice" value="${ownerItemDraft.price}" placeholder="$25"></div>
+      <div class="form-field"><label>Category</label>
+        <select id="oiCategory">
+          ${categories.map(c=>`<option ${ownerItemDraft.category===c.name?'selected':''}>${c.name}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Photo</label>
+      <input type="file" accept="image/*" onchange="ownerPreviewPhoto(event)">
+      <div id="oiPhotoPreview" style="margin-top:6px;">${ownerItemDraft.photo?`<img src="${ownerItemDraft.photo}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveItem()">Save item</button>
+  `;
+}
+function ownerPreviewPhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    ownerItemDraft.photo = ev.target.result;
+    document.getElementById('oiPhotoPreview').innerHTML = `<img src="${ev.target.result}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+  };
+  reader.readAsDataURL(file);
+}
+function ownerSaveItem(){
+  const name = document.getElementById('oiName').value.trim();
+  const desc = document.getElementById('oiDesc').value.trim();
+  const price = document.getElementById('oiPrice').value.trim();
+  const category = document.getElementById('oiCategory').value;
+  if(!name || !price){
+    showToast('Please enter at least a name and a price.');
+    return;
+  }
+  if(ownerEditingItemId){
+    const it = items.find(x=>x.id===ownerEditingItemId);
+    it.name=name; it.description=desc; it.price=price; it.category=category; it.photo=ownerItemDraft.photo;
+    showToast('Item updated.');
+  }else{
+    items.push({id:Date.now(), shopId:loggedInShopId, name, description:desc, price, category, photo:ownerItemDraft.photo, inStock:true});
+    showToast('Item added — it\'s live on the storefront.');
+  }
+  renderCatGrid();
+  renderItems();
+  renderOwnerDashboard();
+}
+function ownerToggleStock(id){
+  const it = items.find(x=>x.id===id);
+  it.inStock = !it.inStock;
+  showToast(it.inStock ? 'Marked back in stock.' : 'Marked as out of stock — still visible, buyers will see it\'s unavailable.');
+  renderItems();
+  renderOwnerDashboard();
+}
+function ownerDeleteItem(id){
+  items = items.filter(it=>it.id!==id);
+  showToast('Item removed.');
+  renderItems();
+  renderOwnerDashboard();
+}
+
+function ownerEditShopForm(){
+  const shop = currentOwnerShop();
+  const body = document.getElementById('ownerModalBody');
+  body.innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="renderOwnerDashboard()">← Back</button>
+    <h2 style="margin-top:12px;">Edit shop info</h2>
+    <div class="form-field"><label>Shop name</label><input id="osName" value="${shop.name}"></div>
+    <div class="form-field"><label>Location</label><input id="osLocation" value="${shop.location}"></div>
+    <div class="form-field"><label>Description</label><textarea id="osDesc">${shop.description||''}</textarea></div>
+    <div class="form-field"><label>Categories you sell</label>
+      <div class="checkbox-grid" id="osCategories">
+        ${categories.map(c=>`<div class="check-pill ${shop.categories.includes(c.name)?'active':''}" data-cat="${c.name}" onclick="toggleCat(this)">${c.icon} ${c.name}</div>`).join("")}
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Cover photo</label>
+      <input type="file" accept="image/*" onchange="ownerPreviewCover(event)">
+      <div id="osCoverPreview" style="margin-top:6px;">${shop.cover?`<img src="${shop.cover}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveShop()">Save changes</button>
+  `;
+}
+let ownerCoverDraft = undefined;
+function ownerPreviewCover(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    ownerCoverDraft = ev.target.result;
+    document.getElementById('osCoverPreview').innerHTML = `<img src="${ev.target.result}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+  };
+  reader.readAsDataURL(file);
+}
+function ownerSaveShop(){
+  const shop = currentOwnerShop();
+  const name = document.getElementById('osName').value.trim();
+  const location = document.getElementById('osLocation').value.trim();
+  const desc = document.getElementById('osDesc').value.trim();
+  const selectedCats = Array.from(document.querySelectorAll('#osCategories .check-pill.active')).map(el=>el.dataset.cat);
+  if(!name || !location || selectedCats.length===0){
+    showToast('Shop name, location, and at least one category are required.');
+    return;
+  }
+  shop.name=name; shop.location=location; shop.description=desc; shop.categories=selectedCats;
+  if(ownerCoverDraft!==undefined) shop.cover=ownerCoverDraft;
+  ownerCoverDraft = undefined;
+  showToast('Shop info updated.');
+  renderShopRail();
+  renderItems();
+  renderOwnerDashboard();
+}
 </script>
 </body>
 </html>
