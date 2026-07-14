@@ -318,32 +318,9 @@ const categories = [
   {icon:"🧕",name:"Traditional & Formal Wear"},
 ];
 
-let shops = [
-  {id:1, name:"Beirut Threads", phone:"96170123456", password:"bt2024", location:"Hamra, Beirut", categories:["Men's Wear","Women's Wear"], description:"Contemporary streetwear and everyday essentials.", cover:null},
-  {id:2, name:"Little Stars Kids", phone:"96181234567", password:"ls2024", location:"Jounieh", categories:["Kids' Wear"], description:"Playful, durable clothing for kids 0–12.", cover:null},
-  {id:3, name:"SoleMate Shoes", phone:"96176543210", password:"sm2024", location:"Achrafieh, Beirut", categories:["Shoes"], description:"Sneakers, boots and everyday shoes for the whole family.", cover:null},
-];
-
-let items = [
-  {id:11, shopId:1, name:"Classic Denim Jacket", description:"Mid-wash denim jacket, unisex fit, sizes S–XL.", price:"$42", category:"Men's Wear", photo:null, inStock:true},
-  {id:12, shopId:1, name:"Linen Summer Dress", description:"Breathable linen dress, available in 4 colors.", price:"$38", category:"Women's Wear", photo:null, inStock:true},
-  {id:13, shopId:1, name:"Everyday Crewneck Tee", description:"100% cotton, pre-shrunk, unisex.", price:"$14", category:"Men's Wear", photo:null, inStock:false},
-  {id:21, shopId:2, name:"Dino Print Hoodie", description:"Soft fleece hoodie for ages 4–8.", price:"$19", category:"Kids' Wear", photo:null, inStock:true},
-  {id:22, shopId:2, name:"School Uniform Set", description:"Polo + trousers set, ages 6–12.", price:"$27", category:"Kids' Wear", photo:null, inStock:true},
-  {id:31, shopId:3, name:"Running Sneakers", description:"Lightweight mesh runners, great for daily wear.", price:"$55", category:"Shoes", photo:null, inStock:true},
-  {id:32, shopId:3, name:"Leather Boots", description:"Genuine leather ankle boots, hand-stitched sole.", price:"$89", category:"Shoes", photo:null, inStock:true},
-];
-
-let pendingShops = [
-  {
-    id:901, name:"Cedar Fashion House", phone:"96179001122", location:"Zahle",
-    categories:["Women's Wear","Bags & Accessories"], description:"Boutique womenswear with locally made accessories.", cover:null,
-    draftItems:[
-      {name:"Embroidered Kaftan", description:"Hand-embroidered, one size fits most.", price:"$65", category:"Women's Wear", photo:null},
-      {name:"Woven Straw Tote", description:"Handwoven straw bag with leather strap.", price:"$24", category:"Bags & Accessories", photo:null},
-    ]
-  }
-];
+let shops = [];
+let items = [];
+let pendingShops = [];
 
 let categoryFilter = null;
 let shopFilter = null;
