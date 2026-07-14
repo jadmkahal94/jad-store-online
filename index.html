@@ -634,6 +634,14 @@ function submitShopRegistration(){
     cover: shopDraft.cover,
     draftItems: valid
   });
+  // Update UI so admins (if viewing) and the public rail see the new pending shop
+  renderShopRail();
+  renderCatGrid();
+  renderItems();
+  // Refresh admin dashboard if open so the pending request appears immediately
+  try{ renderAdminDashboard(); }catch(e){ /* ignore if admin UI not initialized */ }
+  // If an admin is available, open the admin dashboard so they can review the new request immediately
+  try{ document.getElementById('adminOverlay').classList.add('open'); }catch(e){ /* ignore if element missing */ }
   closeModal('shopOverlay');
   showToast('Shop submitted for approval! Our admin team will review it shortly.');
   saveState();
