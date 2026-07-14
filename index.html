@@ -344,6 +344,27 @@ let shopFilter = null;
 let searchQuery = "";
 let sortMode = "default";
 
+/* ================ Persistence (localStorage) ================ */
+function saveState(){
+  try{
+    const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId };
+    localStorage.setItem('jad_state_v1', JSON.stringify(state));
+  }catch(e){ console.warn('saveState failed', e); }
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem('jad_state_v1');
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(s.customers) customers = s.customers;
+    if(s.currentCustomerId) currentCustomerId = s.currentCustomerId;
+    if(s.shops) shops = s.shops;
+    if(s.items) items = s.items;
+    if(s.pendingShops) pendingShops = s.pendingShops;
+    if(s.loggedInShopId) loggedInShopId = s.loggedInShopId;
+  }catch(e){ console.warn('loadState failed', e); }
+}
+
 /* ================= HELPERS ================= */
 function catIcon(name){ const c = categories.find(x=>x.name===name); return c?c.icon:"👕"; }
 function shopById(id){ return shops.find(s=>s.id===id); }
@@ -482,8 +503,7 @@ function openItemModal(id){
         <div class="sloc">📍 ${shop.location}</div>
       </div>
       <div class="action-row">
-        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Store Online.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a>`}
-        <a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>
+        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Store Online.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
       </div>
     </div>
   `;
@@ -495,10 +515,10 @@ let shopDraft = {};
 let shopDraftItems = [];
 let shopCoverData = null;
 
-function openShopModal(){
-  shopDraft = {};
-  shopDraftItems = [{name:"",description:"",price:"",category:categories[0].name,photo:null}];
-  shopCoverData = null;
+function openShopModal(prefill){
+  shopDraft = prefill || {};
+  shopDraftItems = [{name:"",description:"",price:"",category:(shopDraft.categories && shopDraft.categories[0]) || categories[0].name,photo:null}];
+  shopCoverData = shopDraft.cover || null;
   renderShopStep1();
   document.getElementById('shopOverlay').classList.add('open');
 }
@@ -508,10 +528,10 @@ function renderShopStep1(){
   body.innerHTML = `
     <h2>Register your shop</h2>
     <p class="modal-meta">Tell us about your shop. An admin will review before it goes live.</p>
-    <div class="form-field"><label>Shop name</label><input id="sName" placeholder="e.g. Beirut Threads"></div>
-    <div class="form-field"><label>Phone number</label><input id="sPhone" placeholder="+961 3 xxx xxx"></div>
-    <div class="form-field"><label>Set a dashboard password</label><input id="sPassword" type="password" placeholder="Used to log into your shop panel later"></div>
-    <div class="form-field"><label>Shop location</label><input id="sLocation" placeholder="e.g. Hamra, Beirut"></div>
+    <div class="form-field"><label>Shop name</label><input id="sName" value="${shopDraft.name||''}" placeholder="e.g. Beirut Threads"></div>
+    <div class="form-field"><label>Phone number</label><input id="sPhone" value="${shopDraft.phone||''}" placeholder="+961 3 xxx xxx"></div>
+    <div class="form-field"><label>Set a dashboard password</label><input id="sPassword" type="password" value="${shopDraft.password||''}" placeholder="Used to log into your shop panel later"></div>
+    <div class="form-field"><label>Shop location</label><input id="sLocation" value="${shopDraft.location||''}" placeholder="e.g. Hamra, Beirut"></div>
     <div class="form-field"><label>Categories you sell</label>
       <div class="checkbox-grid" id="sCategories">
         ${categories.map(c=>`<div class="check-pill" data-cat="${c.name}" onclick="toggleCat(this)">${c.icon} ${c.name}</div>`).join("")}
@@ -521,7 +541,7 @@ function renderShopStep1(){
     <div class="form-field">
       <label>Shop cover photo (optional)</label>
       <input type="file" accept="image/*" onchange="previewShopCover(event)">
-      <div id="sCoverPreview" style="margin-top:8px;"></div>
+      <div id="sCoverPreview" style="margin-top:8px;">${shopDraft.cover?`<img src="${shopDraft.cover}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`:''}</div>
     </div>
     <label style="display:flex;gap:8px;font-size:12px;color:var(--muted);align-items:flex-start;margin-bottom:16px;">
       <input type="checkbox" style="width:auto;margin-top:2px;">
@@ -633,6 +653,7 @@ function submitShopRegistration(){
   });
   closeModal('shopOverlay');
   showToast('Shop submitted for approval! Our admin team will review it shortly.');
+  saveState();
 }
 
 /* ================= Admin ================= */
@@ -757,12 +778,14 @@ function approveShop(id){
   renderCatGrid();
   renderItems();
   renderAdminDashboard();
+  saveState();
 }
 function rejectShop(id){
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
   showToast('Shop request rejected.');
   renderAdminDashboard();
+  saveState();
 }
 
 function renderAllShopsTab(){
@@ -793,6 +816,7 @@ function moveShop(id, dir){
   renderShopRail();
   renderItems();
   renderAdminDashboard();
+  saveState();
 }
 function deleteShop(id){
   shops = shops.filter(s=>s.id!==id);
@@ -802,6 +826,7 @@ function deleteShop(id){
   renderCatGrid();
   renderItems();
   renderAdminDashboard();
+  saveState();
 }
 
 function renderAllItemsTab(){
@@ -827,9 +852,16 @@ function deleteItem(id){
   showToast('Item removed from the platform.');
   renderItems();
   renderAdminDashboard();
+  saveState();
 }
 
 /* ================= Init ================= */
+renderShopRail();
+renderCatGrid();
+renderItems();
+// restore persisted state (if any)
+loadState();
+// re-render after loading persisted data
 renderShopRail();
 renderCatGrid();
 renderItems();
@@ -852,6 +884,7 @@ function ownerLogin(){
     errBox.style.display='none';
     loggedInShopId = shop.id;
     renderOwnerDashboard();
+    saveState();
     return;
   }
   const pending = pendingShops.find(s=>s.phone===phone && s.password===pass);
@@ -877,16 +910,13 @@ function renderOwnerTabs(active){
   body.innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
       <button id="tabOwnerLogin" class="btn btn-outline btn-sm">Shop owner — Login</button>
-      <button id="tabOwnerRegister" class="btn btn-outline btn-sm">Shop owner — Register</button>
       <button id="tabCustomer" class="btn btn-outline btn-sm">Customer account</button>
     </div>
     <div id="ownerTabContent"></div>
   `;
   document.getElementById('tabOwnerLogin').onclick = ()=> renderOwnerLoginTab();
-  document.getElementById('tabOwnerRegister').onclick = ()=> renderOwnerRegisterTab();
   document.getElementById('tabCustomer').onclick = ()=> renderCustomerAccountTab();
-  if(active==='ownerRegister') renderOwnerRegisterTab();
-  else if(active==='customer') renderCustomerAccountTab();
+  if(active==='customer') renderCustomerAccountTab();
   else renderOwnerLoginTab();
 }
 
@@ -899,34 +929,33 @@ function renderOwnerLoginTab(){
     <div class="form-field"><label>Password</label><input id="ownerPass" type="password" placeholder="••••••••"></div>
     <div id="ownerLoginError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerLogin()">Log in</button>
+    <div style="margin-top:10px;text-align:center;font-size:13px;color:var(--muted);">Don't have an owner account? <button class="btn btn-outline btn-sm" onclick="renderQuickRegisterOwner()">Create &amp; continue</button></div>
     <p style="font-size:11.5px;color:var(--muted);margin-top:12px;">Demo shops: try 96170123456 / demo123 (Beirut Threads).</p>
   `;
 }
 
-function renderOwnerRegisterTab(){
+function renderQuickRegisterOwner(){
   const cont = document.getElementById('ownerTabContent');
   cont.innerHTML = `
-    <h2>Register your shop</h2>
-    <p class="modal-meta">Create your account and set a dashboard password, then complete your shop details.</p>
-    <div class="form-field"><label>Phone number</label><input id="regPhone" placeholder="+961 3 xxx xxx"></div>
-    <div class="form-field"><label>Set a dashboard password</label><input id="regPass" type="password" placeholder="Used to log into your shop panel later"></div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="quickRegisterOwner()">Create account & continue</button>
-      <button class="btn btn-outline" style="flex:1;" onclick="openShopModal()">Full shop registration</button>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Choosing "Create account & continue" will create a lightweight owner account; use "Full shop registration" to submit a full shop listing for admin review (recommended).</div>
+    <h2>Create owner account</h2>
+    <p class="modal-meta">Quickly create an owner account and continue to fill your shop details and items. Nothing is submitted until you save.</p>
+    <div class="form-field"><label>Phone number</label><input id="qrPhone" placeholder="+961 3 xxx xxx"></div>
+    <div class="form-field"><label>Set a dashboard password</label><input id="qrPass" type="password" placeholder="Used to log into your shop panel later"></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="quickRegisterOwner()">Create &amp; continue</button><button class="btn btn-outline" style="flex:1;" onclick="renderOwnerLoginTab()">Cancel</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">You'll be taken to the full shop registration where you can add multiple items and submit when ready.</div>
   `;
 }
 
 function quickRegisterOwner(){
-  const phone = document.getElementById('regPhone').value.trim();
-  const pass = document.getElementById('regPass').value;
+  const phone = document.getElementById('qrPhone').value.trim();
+  const pass = document.getElementById('qrPass').value;
   if(!phone || !pass){ showToast('Enter phone and password to create an account.'); return; }
-  // create a placeholder pending shop so owner can later complete full registration
-  pendingShops.push({ id: Date.now(), name: 'Your shop (incomplete)', phone, password:pass, location:'', categories:[], description:'', cover:null, draftItems:[] });
-  showToast('Account created. Please complete your shop details via Register your shop.');
-  openShopModal();
+  // Prefill full registration form but do NOT submit yet — owner can add items and then submit
+  const prefill = { phone, password: pass, name: '', location: '', categories: [], description: '', cover: null };
+  openShopModal(prefill);
 }
+
+// Note: shop owner registration is handled via the full "Register Your Shop" flow (header button).
 
 function renderCustomerAccountTab(){
   const cont = document.getElementById('ownerTabContent');
@@ -962,6 +991,7 @@ function customerRegister(){
   currentCustomerId = id;
   showToast('Account created. You are now logged in.');
   renderCustomerDashboard();
+  saveState();
 }
 
 function customerLogin(){
@@ -972,6 +1002,7 @@ function customerLogin(){
   currentCustomerId = c.id;
   showToast('Logged in.');
   renderCustomerDashboard();
+  saveState();
 }
 
 function renderCustomerDashboard(){
@@ -987,11 +1018,12 @@ function renderCustomerDashboard(){
   `;
 }
 
-function customerLogout(){ currentCustomerId = null; showToast('Logged out.'); renderOwnerTabs('customer'); }
+function customerLogout(){ currentCustomerId = null; showToast('Logged out.'); renderOwnerTabs('customer'); saveState(); }
 function ownerLogout(){
   loggedInShopId = null;
   closeModal('ownerOverlay');
   showToast('Logged out of shop panel.');
+  saveState();
 }
 function currentOwnerShop(){ return shops.find(s=>s.id===loggedInShopId); }
 
@@ -1096,6 +1128,7 @@ function ownerSaveItem(){
   renderCatGrid();
   renderItems();
   renderOwnerDashboard();
+  saveState();
 }
 function ownerToggleStock(id){
   const it = items.find(x=>x.id===id);
@@ -1103,12 +1136,14 @@ function ownerToggleStock(id){
   showToast(it.inStock ? 'Marked back in stock.' : 'Marked as out of stock — still visible, buyers will see it\'s unavailable.');
   renderItems();
   renderOwnerDashboard();
+  saveState();
 }
 function ownerDeleteItem(id){
   items = items.filter(it=>it.id!==id);
   showToast('Item removed.');
   renderItems();
   renderOwnerDashboard();
+  saveState();
 }
 
 function ownerEditShopForm(){
@@ -1161,6 +1196,7 @@ function ownerSaveShop(){
   renderShopRail();
   renderItems();
   renderOwnerDashboard();
+  saveState();
 }
 </script>
 </body>
