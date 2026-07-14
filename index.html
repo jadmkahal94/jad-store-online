@@ -45,16 +45,16 @@ button{font-family:inherit;cursor:pointer;}
 
 header.main{
   background:#fff;border-bottom:2px solid var(--ink);
-  padding:18px 28px;display:flex;align-items:center;gap:26px;
+  padding:18px 28px;display:flex;align-items:center;gap:24px;
   position:sticky;top:0;z-index:50;
 }
-.logo{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:16px;flex-shrink:0;}
 .logo .mark{
-  width:42px;height:42px;border-radius:14px;
+  width:64px;height:64px;border-radius:18px;
   display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden;
 }
 .logo .mark img{width:100%;height:100%;object-fit:cover;display:block;}
-.logo .word{font-size:22px;font-weight:700;font-family:'Playfair Display';}
+.logo .word{font-size:26px;font-weight:700;font-family:'Playfair Display';}
 .logo .word span{color:var(--rust);}
 .search-wrap{flex:1;display:flex;max-width:520px;}
 .search-wrap input{
@@ -197,8 +197,8 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     <div class="mark">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" aria-label="Jad Online Store logo">
         <rect width="240" height="240" rx="28" ry="28" fill="#2B9FFF"/>
-        <text x="120" y="110" fill="#ffffff" font-family="Inter, sans-serif" font-size="40" font-weight="800" text-anchor="middle">jad</text>
-        <text x="120" y="155" fill="#ffffff" font-family="Inter, sans-serif" font-size="16" font-weight="600" text-anchor="middle">online store</text>
+        <text x="120" y="108" fill="#ffffff" font-family="Inter, sans-serif" font-size="46" font-weight="800" text-anchor="middle">jad</text>
+        <text x="120" y="155" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600" text-anchor="middle">online store</text>
       </svg>
     </div>
     <div class="word">Jad Store <span>Online</span></div>
@@ -288,7 +288,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     <div class="modal-content" style="padding-top:34px;" id="adminModalBody">
       <h2>Admin control panel</h2>
       <p class="modal-meta">Restricted access — username &amp; password only.</p>
-      <div class="form-field"><label>Username</label><input id="adminUser" placeholder="admin"></div>
+      <div class="form-field"><label>Username</label><input id="adminUser" placeholder="jadmkahal"></div>
       <div class="form-field"><label>Password</label><input id="adminPass" type="password" placeholder="••••••••"></div>
       <div id="adminError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;">Incorrect username or password.</div>
       <button class="btn btn-primary" style="width:100%;" onclick="fakeAdmin()">Sign in</button>
@@ -319,9 +319,9 @@ const categories = [
 ];
 
 let shops = [
-  {id:1, name:"Beirut Threads", phone:"96170123456", password:"demo123", location:"Hamra, Beirut", categories:["Men's Wear","Women's Wear"], description:"Contemporary streetwear and everyday essentials.", cover:null},
-  {id:2, name:"Little Stars Kids", phone:"96181234567", password:"demo123", location:"Jounieh", categories:["Kids' Wear"], description:"Playful, durable clothing for kids 0–12.", cover:null},
-  {id:3, name:"SoleMate Shoes", phone:"96176543210", password:"demo123", location:"Achrafieh, Beirut", categories:["Shoes"], description:"Sneakers, boots and everyday shoes for the whole family.", cover:null},
+  {id:1, name:"Beirut Threads", phone:"96170123456", password:"bt2024", location:"Hamra, Beirut", categories:["Men's Wear","Women's Wear"], description:"Contemporary streetwear and everyday essentials.", cover:null},
+  {id:2, name:"Little Stars Kids", phone:"96181234567", password:"ls2024", location:"Jounieh", categories:["Kids' Wear"], description:"Playful, durable clothing for kids 0–12.", cover:null},
+  {id:3, name:"SoleMate Shoes", phone:"96176543210", password:"sm2024", location:"Achrafieh, Beirut", categories:["Shoes"], description:"Sneakers, boots and everyday shoes for the whole family.", cover:null},
 ];
 
 let items = [
@@ -663,8 +663,8 @@ function submitShopRegistration(){
 }
 
 /* ================= Admin ================= */
-const ADMIN_USER = "jad";
-const ADMIN_PASS = "Jad@1994";
+const ADMIN_USER = "jadmkahal";
+const ADMIN_PASS = "jad@1994mkahal";
 function openAdminModal(){ document.getElementById('adminOverlay').classList.add('open'); }
 function fakeAdmin(){
   const u = document.getElementById('adminUser').value.trim();
@@ -766,7 +766,7 @@ function renderShopReview(){
 function sendShopMessage(){
   const val = document.getElementById('shopMsgInput').value.trim();
   if(!val){ showToast('Type a message first.'); return; }
-  showToast('Message sent to shop owner (demo): "'+val+'"');
+  showToast('Message sent to shop owner: "'+val+'"');
   document.getElementById('shopMsgInput').value='';
 }
 function approveShop(id){
@@ -936,7 +936,6 @@ function renderOwnerLoginTab(){
     <div id="ownerLoginError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerLogin()">Log in</button>
     <div style="margin-top:10px;text-align:center;font-size:13px;color:var(--muted);">Don't have an owner account? <button class="btn btn-outline btn-sm" onclick="renderQuickRegisterOwner()">Create &amp; continue</button></div>
-    <p style="font-size:11.5px;color:var(--muted);margin-top:12px;">Demo shops: try 96170123456 / demo123 (Beirut Threads).</p>
   `;
 }
 
@@ -1016,7 +1015,7 @@ function renderCustomerDashboard(){
   const c = customers.find(x=>x.id===currentCustomerId);
   cont.innerHTML = `
     <h2>Welcome${c?(', '+c.name):''}</h2>
-    <p class="modal-meta">Customer accounts are for demo purposes. You can contact shops directly while logged in.</p>
+    <p class="modal-meta">Customer accounts allow you to contact shops directly while logged in.</p>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn btn-outline" onclick="currentCustomerId=null;renderOwnerTabs('customer')">Account details</button>
       <button class="btn btn-primary" onclick="customerLogout()">Log out</button>
