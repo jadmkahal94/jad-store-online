@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jad Store Online</title>
+<title>Jad Online Store</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600;6..96,700;6..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#141F2B;        /* deep navy ink — primary dark surface & text */
-  --paper:#F5F0E4;      /* warm ivory background */
-  --stone:#EAE2CD;      /* soft parchment for cards/accents */
-  --stone-dark:#D8CBA9; /* hairline borders on ivory */
-  --rust:#A9812E;       /* brass/antique-gold — primary accent */
-  --rust-dark:#8A6A23;
-  --olive:#4B5A4A;
-  --gold:#C9A227;
-  --muted:#6E6656;      /* warm charcoal-taupe for secondary text */
+  --ink:#14201B;        /* deep bottle-green ink — primary dark surface & text */
+  --paper:#F8F3EA;      /* warm bone background */
+  --stone:#EFE7D6;      /* soft parchment for cards/accents */
+  --stone-dark:#DED0AE; /* hairline borders on ivory */
+  --rust:#7C2D3B;       /* deep wine — primary accent, replaces the old brass */
+  --rust-dark:#5E2029;
+  --olive:#3F4F3F;
+  --gold:#B08D3E;       /* brass/gold — used for the crest, rules & highlights */
+  --muted:#726B58;      /* warm charcoal-taupe for secondary text */
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -27,7 +27,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 h1,h2,h3,.display{
-  font-family:'Playfair Display',serif;
+  font-family:'Bodoni Moda',serif;
   font-weight:700;
   letter-spacing:0.005em;
 }
@@ -46,8 +46,8 @@ button{font-family:inherit;cursor:pointer;}
 .topbar a:hover{opacity:1;text-decoration:underline;text-underline-offset:3px;}
 
 header.main{
-  background:var(--paper);border-bottom:1px solid var(--ink);
-  padding:20px 28px;display:flex;align-items:center;gap:28px;
+  background:var(--paper);border-bottom:2px solid var(--ink);box-shadow:0 1px 0 var(--gold);
+  padding:18px 28px;display:flex;align-items:center;gap:28px;
   position:sticky;top:0;z-index:50;
 }
 .logo{display:flex;align-items:center;gap:14px;flex-shrink:0;}
@@ -56,7 +56,7 @@ header.main{
   display:flex;align-items:center;justify-content:center;background:transparent;overflow:hidden;
 }
 .logo .mark img{width:100%;height:100%;object-fit:cover;display:block;}
-.logo .word{font-size:22px;font-weight:700;font-family:'Playfair Display';letter-spacing:0.03em;line-height:1.05;}
+.logo .word{font-size:22px;font-weight:700;font-family:'Bodoni Moda';letter-spacing:0.03em;line-height:1.05;}
 .logo .word .brand-sub{display:block;font-family:'Inter';font-size:9.5px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
 .logo .word span{color:var(--rust);}
 .search-wrap{flex:1;display:flex;max-width:480px;}
@@ -78,7 +78,7 @@ header.main{
 .btn-primary{background:var(--rust);color:#fff;border-color:var(--rust);}
 .btn-primary:hover{background:var(--rust-dark);border-color:var(--rust-dark);}
 .btn-outline{background:transparent;color:var(--ink);border-color:var(--ink);}
-.btn-outline:hover{background:var(--ink);color:var(--paper);}
+.btn-outline:hover{background:var(--ink);color:var(--gold);}
 .btn-sm{padding:7px 13px;font-size:10px;}
 .btn:disabled{opacity:0.4;cursor:not-allowed;}
 
@@ -87,15 +87,19 @@ header.main{
 .shop-rail-head{max-width:1240px;margin:0 auto 12px;padding:0 28px;color:#fff;display:flex;justify-content:space-between;align-items:baseline;}
 .shop-rail-head h2{font-size:19px;margin:0;color:#fff;}
 .shop-rail-head span{font-size:12px;color:#C9C2B4;font-family:'Inter';}
-.shop-rail{display:flex;gap:14px;overflow-x:auto;padding:0 28px 6px;scrollbar-width:thin;}
+.shop-rail{display:flex;gap:16px;overflow-x:auto;padding:4px 28px 10px;scrollbar-width:thin;}
 .shop-chip{
-  flex-shrink:0;width:150px;background:rgba(255,255,255,0.02);border:1px solid rgba(245,240,228,0.14);border-radius:2px;
-  padding:14px;cursor:pointer;transition:border-color .12s,transform .12s;
+  flex-shrink:0;width:132px;text-align:center;background:transparent;border:1px solid transparent;border-radius:2px;
+  padding:12px 8px 14px;cursor:pointer;transition:transform .15s;
 }
-.shop-chip:hover, .shop-chip.active{border-color:var(--rust);transform:translateY(-2px);}
-.shop-chip .cover{height:56px;border-radius:1px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:8px;overflow:hidden;}
-.shop-chip .name{color:#fff;font-size:13px;font-weight:700;font-family:'Playfair Display';margin-bottom:2px;}
-.shop-chip .loc{color:#B7AF9A;font-size:10px;letter-spacing:0.02em;}
+.shop-chip:hover, .shop-chip.active{transform:translateY(-3px);}
+.shop-chip .cover{
+  width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;
+  margin:0 auto 10px;overflow:hidden;border:1.5px solid rgba(176,141,62,0.45);transition:border-color .15s;
+}
+.shop-chip:hover .cover, .shop-chip.active .cover{border-color:var(--gold);}
+.shop-chip .name{color:#fff;font-size:13px;font-weight:600;font-family:'Bodoni Moda';margin-bottom:3px;line-height:1.25;}
+.shop-chip .loc{color:#A79D82;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;}
 
 /* ---------- Layout ---------- */
 main{max-width:1240px;margin:0 auto;padding:32px 28px 80px;}
@@ -106,31 +110,32 @@ main{max-width:1240px;margin:0 auto;padding:32px 28px 80px;}
 select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-radius:2px;font-size:11px;letter-spacing:0.04em;background:#fff;font-family:inherit;}
 
 /* categories */
-.cat-grid{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:40px;}
+.cat-grid{display:flex;flex-wrap:wrap;gap:26px;margin-bottom:44px;border-bottom:1px solid var(--stone-dark);padding-bottom:2px;}
 .cat-chip{
-  padding:9px 16px;border-radius:2px;border:1px solid var(--stone-dark);background:#fff;
-  font-size:11.5px;font-weight:600;letter-spacing:0.04em;cursor:pointer;transition:border-color .12s;
+  padding:4px 0 12px;border:none;border-bottom:2px solid transparent;background:transparent;
+  font-family:'Bodoni Moda',serif;font-size:15px;font-weight:600;letter-spacing:0.01em;color:var(--muted);
+  cursor:pointer;transition:color .12s,border-color .12s;
 }
-.cat-chip:hover{border-color:var(--rust);}
-.cat-chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.cat-chip:hover{color:var(--ink);}
+.cat-chip.active{color:var(--rust);border-bottom-color:var(--rust);}
 
 /* items grid */
 .items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;}
 .item-card{
-  background:#fff;border:1px solid var(--stone-dark);border-radius:2px;overflow:hidden;cursor:pointer;
-  transition:box-shadow .15s, transform .15s;
+  background:#fff;border:none;border-radius:2px;overflow:hidden;cursor:pointer;
+  transition:box-shadow .2s, transform .2s;box-shadow:0 1px 3px rgba(20,32,27,0.08);
 }
-.item-card:hover{box-shadow:0 10px 26px rgba(20,31,43,0.12);transform:translateY(-2px);}
-.item-thumb{height:180px;display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;color:rgba(255,255,255,0.95);background-size:cover;background-position:center;}
+.item-card:hover{box-shadow:0 16px 32px rgba(20,32,27,0.16);transform:translateY(-3px);}
+.item-thumb{height:250px;display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;color:rgba(255,255,255,0.95);background-size:cover;background-position:center;}
 .item-shop-tag{
-  position:absolute;top:10px;left:10px;background:rgba(20,31,43,0.85);color:var(--paper);
-  font-size:9.5px;font-weight:600;padding:4px 10px;border-radius:1px;letter-spacing:0.08em;text-transform:uppercase;
+  position:absolute;top:10px;left:10px;background:rgba(20,32,27,0.88);color:var(--paper);
+  font-size:9px;font-weight:600;padding:4px 10px;border-radius:1px;letter-spacing:0.1em;text-transform:uppercase;
 }
-.item-body{padding:14px 16px 16px;}
-.item-price{font-family:'Playfair Display';font-weight:700;font-size:19px;color:var(--rust);}
-.item-name{font-size:13.5px;font-weight:600;margin:4px 0 4px;line-height:1.3;font-family:'Inter';
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:34px;}
-.item-meta{font-size:10.5px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;}
+.item-body{padding:16px 16px 18px;border-top:1px solid var(--stone);}
+.item-price{font-family:'Bodoni Moda';font-weight:700;font-size:20px;color:var(--rust);}
+.item-name{font-size:14px;font-weight:600;margin:5px 0 4px;line-height:1.3;font-family:'Bodoni Moda';
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:36px;}
+.item-meta{font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;}
 
 /* ---------- Modal ---------- */
 .overlay{position:fixed;inset:0;background:rgba(20,31,43,0.65);display:none;align-items:flex-start;justify-content:center;z-index:100;overflow-y:auto;padding:40px 16px;}
@@ -141,10 +146,10 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 .modal-hero{height:230px;display:flex;align-items:center;justify-content:center;font-size:70px;position:relative;color:rgba(255,255,255,0.95);overflow:hidden;border-bottom:1px solid rgba(20,31,43,0.06);}
 .modal-content{padding:24px 28px 28px;position:relative;}
 .modal-content h2{font-size:22px;margin:0 0 4px;}
-.modal-price{font-family:'Playfair Display';font-size:26px;font-weight:700;color:var(--rust);margin:6px 0;}
+.modal-price{font-family:'Bodoni Moda';font-size:26px;font-weight:700;color:var(--rust);margin:6px 0;}
 .modal-meta{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
 .shop-box{background:var(--paper);border:1px solid var(--stone-dark);border-radius:2px;padding:14px 16px;margin-bottom:16px;}
-.shop-box .sname{font-weight:700;font-size:14px;font-family:'Playfair Display';}
+.shop-box .sname{font-weight:700;font-size:14px;font-family:'Bodoni Moda';}
 .shop-box .sloc{font-size:11.5px;color:var(--muted);margin-top:3px;letter-spacing:0.03em;}
 .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
 .btn-wa{background:#25D366;color:#fff;border-color:#25D366;}
@@ -158,6 +163,14 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 }
 .form-field textarea{resize:vertical;min-height:60px;}
 .form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:var(--rust);}
+.photo-upload{
+  display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  padding:13px 16px;border:1.5px dashed var(--stone-dark);border-radius:2px;background:#fff;
+  font-size:12.5px;font-weight:600;letter-spacing:0.03em;color:var(--muted);width:100%;
+  transition:border-color .12s,color .12s,background .12s;
+}
+.photo-upload:hover, .photo-upload:active{border-color:var(--rust);color:var(--rust);background:var(--paper);}
+.photo-upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
 .checkbox-grid{display:flex;flex-wrap:wrap;gap:8px;}
 .check-pill{padding:7px 13px;border-radius:2px;border:1px solid var(--stone-dark);font-size:11.5px;font-weight:600;letter-spacing:0.02em;cursor:pointer;}
 .check-pill.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
@@ -169,7 +182,7 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 /* ---------- Footer ---------- */
 footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40px;}
 .footer-grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:32px;font-size:13px;}
-.footer-grid h3{color:#fff;font-size:15px;margin:0 0 10px;font-family:'Playfair Display';}
+.footer-grid h3{color:#fff;font-size:15px;margin:0 0 10px;font-family:'Bodoni Moda';}
 .footer-grid a{display:block;padding:3px 0;color:#B7AF9F;}
 .footer-grid a:hover{color:#fff;}
 .foot-bottom{max-width:1240px;margin:24px auto 0;padding-top:18px;border-top:1px solid #3A332C;font-size:11.5px;color:#8A8172;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
@@ -203,20 +216,24 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 <body>
 
 <div class="topbar">
-  <span>JOS — Curated clothing shops, all in one place</span>
+  <span>Jad Online Store — Independent clothing shops, all in one place</span>
   <a href="#" onclick="openAdminModal();return false;">Admin login</a>
 </div>
 
 <header class="main">
   <div class="logo">
     <div class="mark">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-label="JOS logo">
-        <circle cx="60" cy="60" r="58" fill="#141F2B"/>
-        <circle cx="60" cy="60" r="51" fill="none" stroke="#A9812E" stroke-width="1.2"/>
-        <text x="60" y="72" fill="#F5F0E4" font-family="'Playfair Display', serif" font-size="34" font-weight="700" letter-spacing="1" text-anchor="middle">JOS</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-label="Jad Online Store crest">
+        <circle cx="60" cy="60" r="58" fill="#14201B"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#B08D3E" stroke-width="1"/>
+        <circle cx="60" cy="60" r="46" fill="none" stroke="#B08D3E" stroke-width="0.5" opacity="0.6"/>
+        <text x="60" y="79" fill="#F8F3EA" font-family="'Bodoni Moda', serif" font-size="60" font-weight="700" text-anchor="middle">J</text>
+        <line x1="35" y1="88" x2="85" y2="88" stroke="#B08D3E" stroke-width="1"/>
+        <circle cx="30" cy="88" r="1.8" fill="#B08D3E"/>
+        <circle cx="90" cy="88" r="1.8" fill="#B08D3E"/>
       </svg>
     </div>
-    <div class="word">Jad Store <span>Online</span><span class="brand-sub">Curated Fashion Marketplace</span></div>
+    <div class="word">Jad <span>Online Store</span><span class="brand-sub">Independent Fashion Marketplace</span></div>
   </div>
   <div class="search-wrap">
     <input type="text" placeholder="Search items, brands, shops…" id="searchInput" oninput="liveSearch()" onkeypress="if(event.key==='Enter')doSearch()">
@@ -230,7 +247,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 
 <div class="shop-rail-wrap">
   <div class="shop-rail-head">
-    <h2>Shops on Jad Store</h2>
+    <h2>Shops on Jad Online Store</h2>
     <span id="shopFilterLabel">Tap a shop to browse just their items</span>
   </div>
   <div class="shop-rail" id="shopRail"></div>
@@ -259,7 +276,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 <footer>
   <div class="footer-grid">
     <div>
-      <h3>Jad Store Online</h3>
+      <h3>Jad Online Store</h3>
       <p style="color:#B7AF9F;line-height:1.6;max-width:280px;">A marketplace where local clothing shops list their pieces and shoppers browse them all in one place.</p>
     </div>
     <div>
@@ -275,7 +292,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     </div>
   </div>
   <div class="foot-bottom">
-    <span>© 2026 Jad Store Online. A neutral hosting platform for independent clothing shops.</span>
+    <span>© 2026 Jad Online Store. A neutral hosting platform for independent clothing shops.</span>
     <span>Live marketplace experience</span>
   </div>
 </footer>
@@ -442,6 +459,13 @@ function startSyncLoop(){
 }
 
 /* ================= HELPERS ================= */
+// Phone numbers get typed differently every time (+961 3 xxx xxx vs 03xxxxxx vs 3-xxx-xxx…),
+// so logins were silently failing whenever the format didn't match character-for-character.
+// We compare on the last 8 digits only, which is robust to spaces, dashes, "+", and country code.
+function normPhone(p){
+  const digits = (p||'').replace(/\D/g,'');
+  return digits.slice(-8);
+}
 function catIcon(name){ const c = categories.find(x=>x.name===name); return c?c.icon:"👕"; }
 function shopById(id){ return shops.find(s=>s.id===id); }
 function priceNum(item){ return parseFloat((item.price||'').replace(/[^0-9.]/g,''))||0; }
@@ -460,6 +484,32 @@ function thumbHTML(item){
   return item.category ? catIcon(item.category) : "🏬";
 }
 function stars(){ return ''; }
+
+// Phone camera photos can be several MB — stored raw as base64 that bloats every
+// Firebase sync and can fail silently. We downscale + recompress every upload
+// to a reasonable size before it ever gets stored.
+function compressImage(file, callback){
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const maxDim = 900;
+      let w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w > h){ h = Math.round(h * (maxDim/w)); w = maxDim; }
+        else{ w = Math.round(w * (maxDim/h)); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = ()=> callback(ev.target.result); // fallback to original if it can't be decoded as an image
+    img.src = ev.target.result;
+  };
+  reader.onerror = ()=> showToast('Could not read that photo — try a different one.');
+  reader.readAsDataURL(file);
+}
 
 /* ================= RENDER: shop rail ================= */
 function renderShopRail(){
@@ -558,7 +608,7 @@ function showToast(msg){
   window._toastTimer = setTimeout(()=> t.classList.remove('show'), 3200);
 }
 function openTerms(){
-  showToast('Terms: Jad Store Online is a neutral hosting platform — not liable for item quality or shop conduct.');
+  showToast('Terms: Jad Online Store is a neutral hosting platform — not liable for item quality or shop conduct.');
 }
 
 /* ================= Item detail modal ================= */
@@ -579,7 +629,7 @@ function openItemModal(id){
         <div class="sloc">📍 ${shop.location}</div>
       </div>
       <div class="action-row">
-        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Store Online.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
+        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Online Store.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
       </div>
     </div>
   `;
@@ -616,12 +666,12 @@ function renderShopStep1(){
     <div class="form-field"><label>Shop description</label><textarea id="sDesc" placeholder="What makes your shop worth checking out?"></textarea></div>
     <div class="form-field">
       <label>Shop cover photo (optional)</label>
-      <input type="file" accept="image/*" onchange="previewShopCover(event)">
+      <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="previewShopCover(event)"></label>
       <div id="sCoverPreview" style="margin-top:8px;">${shopDraft.cover?`<img src="${shopDraft.cover}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`:''}</div>
     </div>
     <label style="display:flex;gap:8px;font-size:12px;color:var(--muted);align-items:flex-start;margin-bottom:16px;">
       <input type="checkbox" style="width:auto;margin-top:2px;">
-      <span>I agree to the Terms &amp; Conditions — Jad Store Online is a neutral hosting platform and is not liable for item quality or transactions between shops and buyers.</span>
+      <span>I agree to the Terms &amp; Conditions — Jad Online Store is a neutral hosting platform and is not liable for item quality or transactions between shops and buyers.</span>
     </label>
     <button class="btn btn-primary" style="width:100%;" onclick="goToItemsStep()">Continue — add your items</button>
   `;
@@ -630,12 +680,10 @@ function toggleCat(el){ el.classList.toggle('active'); }
 function previewShopCover(e){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    shopCoverData = ev.target.result;
+  compressImage(file, dataUrl=>{
+    shopCoverData = dataUrl;
     document.getElementById('sCoverPreview').innerHTML = `<img src="${shopCoverData}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`;
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 function goToItemsStep(){
@@ -685,7 +733,7 @@ function renderItemEntry(it, idx){
       </div>
       <div class="form-field">
         <label>Photo</label>
-        <input type="file" accept="image/*" onchange="previewItemPhoto(event,${idx})">
+        <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="previewItemPhoto(event,${idx})"></label>
         <div id="itemPhotoPreview${idx}" style="margin-top:6px;">${it.photo?`<img src="${it.photo}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;">`:''}</div>
       </div>
     </div>
@@ -695,12 +743,10 @@ function updateItemField(idx, field, value){ shopDraftItems[idx][field] = value;
 function previewItemPhoto(e, idx){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    shopDraftItems[idx].photo = ev.target.result;
-    document.getElementById('itemPhotoPreview'+idx).innerHTML = `<img src="${ev.target.result}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;">`;
-  };
-  reader.readAsDataURL(file);
+  compressImage(file, dataUrl=>{
+    shopDraftItems[idx].photo = dataUrl;
+    document.getElementById('itemPhotoPreview'+idx).innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;">`;
+  });
 }
 function addItemEntry(){
   shopDraftItems.push({name:"",description:"",price:"",category:shopDraft.categories[0]||categories[0].name,photo:null});
@@ -767,10 +813,10 @@ function renderAdminDashboard(){
     <h2>Welcome, Jad</h2>
     <p class="modal-meta">Admin dashboard — manage shop approvals, orders, and customer accounts.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Live shops</div><div style="font-family:'Playfair Display';font-size:24px;font-weight:800;">${shops.length}</div></div>
-      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Live items</div><div style="font-family:'Playfair Display';font-size:24px;font-weight:800;">${items.length}</div></div>
-      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pending shops</div><div style="font-family:'Playfair Display';font-size:24px;font-weight:800;color:var(--rust);">${pendingShops.length}</div></div>
-      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Categories</div><div style="font-family:'Playfair Display';font-size:24px;font-weight:800;">${categories.length}</div></div>
+      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Live shops</div><div style="font-family:'Bodoni Moda';font-size:24px;font-weight:800;">${shops.length}</div></div>
+      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Live items</div><div style="font-family:'Bodoni Moda';font-size:24px;font-weight:800;">${items.length}</div></div>
+      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pending shops</div><div style="font-family:'Bodoni Moda';font-size:24px;font-weight:800;color:var(--rust);">${pendingShops.length}</div></div>
+      <div class="shop-box" style="margin-bottom:0;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Categories</div><div style="font-family:'Bodoni Moda';font-size:24px;font-weight:800;">${categories.length}</div></div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
       ${tabBtn('overview','Overview')}
@@ -949,9 +995,9 @@ function openOwnerLoginModal(){
 }
 function ownerLogin(){
   const phone = document.getElementById('ownerPhone').value.trim();
-  const pass = document.getElementById('ownerPass').value;
+  const pass = document.getElementById('ownerPass').value.trim();
   const errBox = document.getElementById('ownerLoginError');
-  const shop = shops.find(s=>s.phone===phone && s.password===pass);
+  const shop = shops.find(s=>normPhone(s.phone)===normPhone(phone) && s.password===pass);
   if(shop){
     errBox.style.display='none';
     loggedInShopId = shop.id;
@@ -959,7 +1005,7 @@ function ownerLogin(){
     saveState();
     return;
   }
-  const pending = pendingShops.find(s=>s.phone===phone && s.password===pass);
+  const pending = pendingShops.find(s=>normPhone(s.phone)===normPhone(phone) && s.password===pass);
   if(pending){
     errBox.style.display='none';
     document.getElementById('ownerModalBody').innerHTML = `
@@ -1056,7 +1102,7 @@ function customerRegister(){
   const phone = document.getElementById('custPhone').value.trim();
   const pass = document.getElementById('custPass').value;
   if(!name || !phone || !pass){ showToast('Please provide name, phone and password.'); return; }
-  if(customers.find(c=>c.phone===phone)){ showToast('Phone already registered.'); return; }
+  if(customers.find(c=>normPhone(c.phone)===normPhone(phone))){ showToast('Phone already registered.'); return; }
   const id = Date.now();
   customers.push({id,name,phone,password:pass});
   currentCustomerId = id;
@@ -1068,7 +1114,7 @@ function customerRegister(){
 function customerLogin(){
   const phone = document.getElementById('custLoginPhone').value.trim();
   const pass = document.getElementById('custLoginPass').value;
-  const c = customers.find(x=>x.phone===phone && x.password===pass);
+  const c = customers.find(x=>normPhone(x.phone)===normPhone(phone) && x.password===pass);
   if(!c){ showToast('Invalid customer phone or password.'); return; }
   currentCustomerId = c.id;
   showToast('Logged in.');
@@ -1163,7 +1209,7 @@ function renderOwnerItemForm(title){
     </div>
     <div class="form-field">
       <label>Photo</label>
-      <input type="file" accept="image/*" onchange="ownerPreviewPhoto(event)">
+      <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="ownerPreviewPhoto(event)"></label>
       <div id="oiPhotoPreview" style="margin-top:6px;">${ownerItemDraft.photo?`<img src="${ownerItemDraft.photo}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveItem()">Save item</button>
@@ -1172,12 +1218,10 @@ function renderOwnerItemForm(title){
 function ownerPreviewPhoto(e){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    ownerItemDraft.photo = ev.target.result;
-    document.getElementById('oiPhotoPreview').innerHTML = `<img src="${ev.target.result}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
-  };
-  reader.readAsDataURL(file);
+  compressImage(file, dataUrl=>{
+    ownerItemDraft.photo = dataUrl;
+    document.getElementById('oiPhotoPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+  });
 }
 function ownerSaveItem(){
   const name = document.getElementById('oiName').value.trim();
@@ -1233,7 +1277,7 @@ function ownerEditShopForm(){
     </div>
     <div class="form-field">
       <label>Cover photo</label>
-      <input type="file" accept="image/*" onchange="ownerPreviewCover(event)">
+      <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="ownerPreviewCover(event)"></label>
       <div id="osCoverPreview" style="margin-top:6px;">${shop.cover?`<img src="${shop.cover}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveShop()">Save changes</button>
@@ -1243,12 +1287,10 @@ let ownerCoverDraft = undefined;
 function ownerPreviewCover(e){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    ownerCoverDraft = ev.target.result;
-    document.getElementById('osCoverPreview').innerHTML = `<img src="${ev.target.result}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
-  };
-  reader.readAsDataURL(file);
+  compressImage(file, dataUrl=>{
+    ownerCoverDraft = dataUrl;
+    document.getElementById('osCoverPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+  });
 }
 function ownerSaveShop(){
   const shop = currentOwnerShop();
