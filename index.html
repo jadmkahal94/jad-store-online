@@ -178,6 +178,13 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
+.sync-badge{
+  position:fixed;top:8px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:100px;
+  z-index:300;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.sync-badge.show{opacity:0.85;}
+
 @media (max-width:900px){
   header.main{flex-wrap:wrap;}
   .search-wrap{order:3;max-width:100%;}
@@ -301,6 +308,7 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="sync-badge" id="syncBadge">Syncing…</div>
 
 <!-- Shop owner overlay -->
 <div class="overlay" id="ownerOverlay">
@@ -331,25 +339,102 @@ let shopFilter = null;
 let searchQuery = "";
 let sortMode = "default";
 
-/* ================ Persistence (localStorage) ================ */
-function saveState(){
-  try{
-    const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId };
-    localStorage.setItem('jad_state_v1', JSON.stringify(state));
-  }catch(e){ console.warn('saveState failed', e); }
+/* ================ Persistence (Firebase Realtime Database) ================ */
+/* All data now lives in one shared cloud database instead of per-device localStorage,
+   so every phone/computer sees the same shops, items and pending requests. */
+const FIREBASE_URL = "https://jad-store-online-default-rtdb.europe-west1.firebasedatabase.app/";
+const STATE_PATH = "state.json";
+
+let lastSavedSnapshot = "";      // used to avoid saving right after we just loaded the same data
+let isSaving = false;
+let saveQueued = false;
+
+function showSyncBadge(msg){
+  const b = document.getElementById('syncBadge');
+  if(!b) return;
+  b.textContent = msg;
+  b.classList.add('show');
+  clearTimeout(window._syncTimer);
+  window._syncTimer = setTimeout(()=> b.classList.remove('show'), 1500);
 }
-function loadState(){
+
+function currentStateObject(){
+  return { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId };
+}
+
+async function saveState(){
+  // Debounce/guard so rapid clicks don't fire overlapping writes
+  if(isSaving){ saveQueued = true; return; }
+  isSaving = true;
   try{
-    const raw = localStorage.getItem('jad_state_v1');
-    if(!raw) return;
-    const s = JSON.parse(raw);
+    const state = currentStateObject();
+    const json = JSON.stringify(state);
+    lastSavedSnapshot = json;
+    const res = await fetch(FIREBASE_URL + STATE_PATH, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: json
+    });
+    if(!res.ok){
+      console.warn("saveState: Firebase responded with", res.status);
+      showSyncBadge("⚠️ Could not sync — check your connection");
+    } else {
+      showSyncBadge("✓ Synced");
+    }
+  }catch(e){
+    console.warn('saveState failed', e);
+    showSyncBadge("⚠️ Could not sync — check your connection");
+  }finally{
+    isSaving = false;
+    if(saveQueued){ saveQueued = false; saveState(); }
+  }
+}
+
+async function loadState({ silent } = {}){
+  try{
+    const res = await fetch(FIREBASE_URL + STATE_PATH, { cache: "no-store" });
+    if(!res.ok){
+      console.warn("loadState: Firebase responded with", res.status);
+      return false;
+    }
+    const s = await res.json();
+    if(!s) return false; // database empty (first run)
+
+    const incomingJson = JSON.stringify(s);
+    if(incomingJson === lastSavedSnapshot) return false; // nothing new since our last write
+
     if(s.customers) customers = s.customers;
-    if(s.currentCustomerId) currentCustomerId = s.currentCustomerId;
+    if(s.currentCustomerId !== undefined) currentCustomerId = s.currentCustomerId;
     if(s.shops) shops = s.shops;
     if(s.items) items = s.items;
     if(s.pendingShops) pendingShops = s.pendingShops;
-    if(s.loggedInShopId) loggedInShopId = s.loggedInShopId;
-  }catch(e){ console.warn('loadState failed', e); }
+    if(s.loggedInShopId !== undefined) loggedInShopId = s.loggedInShopId;
+    lastSavedSnapshot = incomingJson;
+    return true;
+  }catch(e){
+    console.warn('loadState failed', e);
+    return false;
+  }
+}
+
+// Re-render whatever is currently visible after a background sync picks up new data
+function reRenderEverything(){
+  renderShopRail();
+  renderCatGrid();
+  renderItems();
+  if(document.getElementById('adminOverlay').classList.contains('open')){
+    try{ renderAdminDashboard(); }catch(e){}
+  }
+}
+
+// Poll the shared database every few seconds so changes made on other devices
+// (a new shop submitted on a phone, an approval done on a laptop, etc.) show up
+// here without needing a manual page refresh.
+function startSyncLoop(){
+  setInterval(async ()=>{
+    const changed = await loadState({ silent:true });
+    if(changed) reRenderEverything();
+  }, 4000);
 }
 
 /* ================= HELPERS ================= */
@@ -849,17 +934,6 @@ function deleteItem(id){
   saveState();
 }
 
-/* ================= Init ================= */
-renderShopRail();
-renderCatGrid();
-renderItems();
-// restore persisted state (if any)
-loadState();
-// re-render after loading persisted data
-renderShopRail();
-renderCatGrid();
-renderItems();
-
 /* ================= Shop Owner Panel ================= */
 let loggedInShopId = null;
 let ownerItemDraft = null; // item being added/edited
@@ -1191,6 +1265,20 @@ function ownerSaveShop(){
   renderOwnerDashboard();
   saveState();
 }
+
+/* ================= Init ================= */
+// Render an empty shell immediately, then pull the shared data from Firebase
+// before rendering it for real, and keep polling so all devices stay in sync.
+renderShopRail();
+renderCatGrid();
+renderItems();
+
+(async function init(){
+  showSyncBadge("Loading…");
+  await loadState();
+  reRenderEverything();
+  startSyncLoop();
+})();
 </script>
 </body>
 </html>
