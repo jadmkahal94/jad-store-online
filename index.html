@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jad Online Store</title>
+<meta name="description" content="Jad Online Store — an independent clothing marketplace in Lebanon. Browse curated pieces from local shops and contact them directly.">
+<meta property="og:title" content="Jad Online Store">
+<meta property="og:description" content="Curated clothing from independent Lebanese shops, all in one place.">
+<meta property="og:image" content="icon-512.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14201B">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600;6..96,700;6..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -154,6 +163,20 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
 .btn-wa{background:#25D366;color:#fff;border-color:#25D366;}
 .btn-wa:hover{background:#1DA851;border-color:#1DA851;}
+.gallery-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(20,32,27,0.55);color:#fff;border:none;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;line-height:1;}
+.gallery-nav.prev{left:10px;}
+.gallery-nav.next{right:10px;}
+.gallery-dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:2;}
+.gallery-dots .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.5);}
+.gallery-dots .dot.active{background:#fff;}
+.fav-heart{
+  position:absolute;top:10px;right:10px;background:rgba(20,32,27,0.72);color:#fff;border:none;
+  width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;z-index:2;
+}
+.fav-heart.active{color:#E8A5AE;}
+.star-row{color:var(--gold);font-size:13px;letter-spacing:1px;}
+.price-controls{display:flex;gap:6px;align-items:center;}
+.price-controls input{width:70px;padding:9px 8px;border:1px solid var(--stone-dark);border-radius:2px;font-size:11px;font-family:inherit;}
 
 /* forms */
 .form-field{margin-bottom:14px;}
@@ -171,6 +194,10 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 }
 .photo-upload:hover, .photo-upload:active{border-color:var(--rust);color:var(--rust);background:var(--paper);}
 .photo-upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
+.photo-thumbs-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.photo-thumb{position:relative;width:62px;height:62px;border-radius:4px;overflow:hidden;border:1px solid var(--stone-dark);flex-shrink:0;}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-thumb .rm{position:absolute;top:2px;right:2px;background:rgba(20,32,27,0.8);color:#fff;border:none;border-radius:50%;width:17px;height:17px;font-size:10px;line-height:1;cursor:pointer;padding:0;}
 .checkbox-grid{display:flex;flex-wrap:wrap;gap:8px;}
 .check-pill{padding:7px 13px;border-radius:2px;border:1px solid var(--stone-dark);font-size:11.5px;font-weight:600;letter-spacing:0.02em;cursor:pointer;}
 .check-pill.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
@@ -263,6 +290,11 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     <h2>Items <span style="color:var(--rust)" id="filterLabel"></span></h2>
     <div class="controls-row">
       <span class="sub" id="resultCount"></span>
+      <div class="price-controls">
+        <input type="number" id="minPriceInput" placeholder="Min $" onchange="setPriceFilter()">
+        <span style="color:var(--muted);font-size:11px;">–</span>
+        <input type="number" id="maxPriceInput" placeholder="Max $" onchange="setPriceFilter()">
+      </div>
       <select class="sortSelect" id="sortSelect" onchange="setSortMode(this.value)">
         <option value="default">Sort: Featured</option>
         <option value="price_asc">Price: Low to High</option>
@@ -359,6 +391,13 @@ let categoryFilter = null;
 let shopFilter = null;
 let searchQuery = "";
 let sortMode = "default";
+let minPriceFilter = "";
+let maxPriceFilter = "";
+
+// Platform limits — keeps any one shop from flooding the marketplace with
+// endless items/photos, and keeps each Firebase write at a sane size.
+const MAX_ITEMS_PER_SHOP = 40;
+const MAX_PHOTOS_PER_ITEM = 4;
 
 /* ================ Persistence (Firebase Realtime Database) ================ */
 /* All data now lives in one shared cloud database instead of per-device localStorage,
@@ -480,10 +519,48 @@ function thumbGradient(seed){
   return grads[Math.abs(seed) % grads.length];
 }
 function thumbHTML(item){
-  if(item.photo) return `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+  const photos = itemPhotos(item);
+  if(photos.length) return `<img src="${photos[0]}" style="width:100%;height:100%;object-fit:cover;">`;
   return item.category ? catIcon(item.category) : "🏬";
 }
+// Items used to store a single `photo` string; they now store a `photos` array.
+// This reads either shape so old data (and shop covers, which stay single-photo) keep working.
+function itemPhotos(item){
+  if(Array.isArray(item.photos) && item.photos.length) return item.photos;
+  if(item.photo) return [item.photo];
+  return [];
+}
 function stars(){ return ''; }
+function starRow(rating){
+  const r = Math.round(rating||0);
+  return '★'.repeat(r) + '☆'.repeat(5-r);
+}
+function shopRating(shop){
+  const reviews = shop.reviews||[];
+  if(!reviews.length) return null;
+  const avg = reviews.reduce((sum,r)=>sum+r.rating,0) / reviews.length;
+  return {avg, count: reviews.length};
+}
+function isFavorited(itemId){
+  const c = customers.find(x=>x.id===currentCustomerId);
+  return !!(c && (c.favorites||[]).includes(itemId));
+}
+function toggleFavorite(itemId){
+  if(!currentCustomerId){
+    showToast('Sign in as a customer to save favourites.');
+    renderOwnerTabs('customer');
+    document.getElementById('ownerOverlay').classList.add('open');
+    return;
+  }
+  const c = customers.find(x=>x.id===currentCustomerId);
+  if(!c.favorites) c.favorites = [];
+  const idx = c.favorites.indexOf(itemId);
+  if(idx>-1){ c.favorites.splice(idx,1); showToast('Removed from favourites.'); }
+  else{ c.favorites.push(itemId); showToast('Saved to favourites.'); }
+  renderItems();
+  if(document.getElementById('itemOverlay').classList.contains('open')) openItemModal(itemId);
+  saveState();
+}
 
 // Phone camera photos can be several MB — stored raw as base64 that bloats every
 // Firebase sync and can fail silently. We downscale + recompress every upload
@@ -555,12 +632,22 @@ function doSearch(){
   document.getElementById('itemsAnchor').scrollIntoView({behavior:'smooth'});
 }
 function setSortMode(v){ sortMode = v; renderItems(); }
+function setPriceFilter(){
+  minPriceFilter = document.getElementById('minPriceInput').value;
+  maxPriceFilter = document.getElementById('maxPriceInput').value;
+  renderItems();
+}
 
 function renderItems(){
+  const min = parseFloat(minPriceFilter);
+  const max = parseFloat(maxPriceFilter);
   let filtered = items.filter(it=>{
     if(shopFilter && it.shopId!==shopFilter) return false;
     if(categoryFilter && it.category!==categoryFilter) return false;
     if(!matchesSearch(it.name + " " + it.description)) return false;
+    const p = priceNum(it);
+    if(!isNaN(min) && p < min) return false;
+    if(!isNaN(max) && p > max) return false;
     return true;
   });
 
@@ -576,11 +663,13 @@ function renderItems(){
   grid.innerHTML = filtered.map((it,i)=>{
     const shop = shopById(it.shopId);
     const oos = it.inStock===false;
+    const fav = isFavorited(it.id);
     return `
     <div class="item-card" onclick="openItemModal(${it.id})" style="${oos?'opacity:0.65;':''}">
-      <div class="item-thumb" style="background:${it.photo?'#000':thumbGradient(it.id+i)}">
+      <div class="item-thumb" style="background:${itemPhotos(it).length?'#000':thumbGradient(it.id+i)}">
         <div class="item-shop-tag">${shop?shop.name:'Shop'}</div>
-        ${oos?`<div style="position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:100px;">OUT OF STOCK</div>`:''}
+        <button class="fav-heart ${fav?'active':''}" onclick="event.stopPropagation();toggleFavorite(${it.id})">${fav?'♥':'♡'}</button>
+        ${oos?`<div style="position:absolute;top:44px;right:8px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:100px;">OUT OF STOCK</div>`:''}
         ${thumbHTML(it)}
       </div>
       <div class="item-body">
@@ -612,13 +701,27 @@ function openTerms(){
 }
 
 /* ================= Item detail modal ================= */
+let currentModalItemId = null;
 function openItemModal(id){
   const it = items.find(x=>x.id===id);
   const shop = shopById(it.shopId);
   const oos = it.inStock===false;
+  const photos = itemPhotos(it);
+  const fav = isFavorited(it.id);
+  const rating = shopRating(shop);
+  currentModalItemId = id;
+  it.views = (it.views||0)+1;
   const body = document.getElementById('itemModalBody');
   body.innerHTML = `
-    <div class="modal-hero" style="background:${it.photo?'#000':thumbGradient(it.id)};${oos?'filter:grayscale(0.4);':''}">${thumbHTML(it)}</div>
+    <div class="modal-hero" style="background:${photos.length?'#000':thumbGradient(it.id)};${oos?'filter:grayscale(0.4);':''}">
+      ${photos.length ? photos.map((p,i)=>`<img src="${p}" data-gidx="${i}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:${i===0?'block':'none'};">`).join("") : thumbHTML(it)}
+      <button class="fav-heart ${fav?'active':''}" onclick="toggleFavorite(${it.id})">${fav?'♥':'♡'}</button>
+      ${photos.length>1 ? `
+        <button class="gallery-nav prev" onclick="galleryNav(-1)">‹</button>
+        <button class="gallery-nav next" onclick="galleryNav(1)">›</button>
+        <div class="gallery-dots">${photos.map((_,i)=>`<span class="dot ${i===0?'active':''}"></span>`).join("")}</div>
+      ` : ''}
+    </div>
     <div class="modal-content">
       <h2>${it.name}</h2>
       <div class="modal-price">${it.price}</div>
@@ -627,13 +730,74 @@ function openItemModal(id){
       <div class="shop-box">
         <div class="sname">${shop.name}</div>
         <div class="sloc">📍 ${shop.location}</div>
+        ${rating ? `<div class="star-row" style="margin-top:6px;">${starRow(rating.avg)} <span style="color:var(--muted);font-size:11px;">(${rating.count} review${rating.count===1?'':'s'})</span></div>` : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px;">No reviews yet</div>`}
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="toggleReviewForm(${shop.id})">✎ Write a review</button>
+        <div id="reviewFormWrap"></div>
       </div>
       <div class="action-row">
-        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Online Store.')}" target="_blank" rel="noopener">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
+        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Online Store.')}" target="_blank" rel="noopener" onclick="trackWhatsappClick(${it.id})">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
       </div>
     </div>
   `;
   document.getElementById('itemOverlay').classList.add('open');
+  saveState();
+}
+function galleryNav(dir){
+  const hero = document.querySelector('#itemModalBody .modal-hero');
+  if(!hero) return;
+  const imgs = Array.from(hero.querySelectorAll('img[data-gidx]'));
+  const dots = Array.from(hero.querySelectorAll('.gallery-dots .dot'));
+  if(!imgs.length) return;
+  let cur = imgs.findIndex(im=>im.style.display!=='none');
+  if(cur<0) cur = 0;
+  imgs[cur].style.display='none';
+  if(dots[cur]) dots[cur].classList.remove('active');
+  const next = (cur+dir+imgs.length)%imgs.length;
+  imgs[next].style.display='block';
+  if(dots[next]) dots[next].classList.add('active');
+}
+function trackWhatsappClick(itemId){
+  const it = items.find(x=>x.id===itemId);
+  if(it) it.whatsappClicks = (it.whatsappClicks||0)+1;
+  saveState();
+}
+function toggleReviewForm(shopId){
+  const wrap = document.getElementById('reviewFormWrap');
+  if(!wrap) return;
+  if(wrap.innerHTML.trim()){ wrap.innerHTML=''; return; }
+  if(!currentCustomerId){
+    showToast('Sign in as a customer to leave a review.');
+    renderOwnerTabs('customer');
+    document.getElementById('ownerOverlay').classList.add('open');
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="form-field" style="margin-top:10px;"><label>Rating</label>
+      <select id="reviewRating">
+        <option value="5">★★★★★ Excellent</option>
+        <option value="4">★★★★☆ Good</option>
+        <option value="3">★★★☆☆ Okay</option>
+        <option value="2">★★☆☆☆ Poor</option>
+        <option value="1">★☆☆☆☆ Bad</option>
+      </select>
+    </div>
+    <div class="form-field"><label>Comment (optional)</label><textarea id="reviewText" placeholder="How was your experience with this shop?"></textarea></div>
+    <button class="btn btn-primary btn-sm" style="width:100%;" onclick="submitShopReview(${shopId})">Submit review</button>
+  `;
+}
+function submitShopReview(shopId){
+  const shop = shopById(shopId);
+  const rating = parseInt(document.getElementById('reviewRating').value);
+  const text = document.getElementById('reviewText').value.trim();
+  const c = customers.find(x=>x.id===currentCustomerId);
+  if(!shop.reviews) shop.reviews = [];
+  // One review per customer per shop — leaving another replaces the old one instead of stacking duplicates.
+  const existingIdx = shop.reviews.findIndex(r=>r.customerId===currentCustomerId);
+  const review = {id:Date.now(), customerId:currentCustomerId, customerName: c?c.name:'Customer', rating, text, date:new Date().toISOString()};
+  if(existingIdx>-1) shop.reviews[existingIdx] = review; else shop.reviews.push(review);
+  showToast('Thanks for your review!');
+  saveState();
+  if(currentModalItemId!==null) openItemModal(currentModalItemId);
 }
 
 /* ================= Shop registration flow ================= */
@@ -643,7 +807,7 @@ let shopCoverData = null;
 
 function openShopModal(prefill){
   shopDraft = prefill || {};
-  shopDraftItems = [{name:"",description:"",price:"",category:(shopDraft.categories && shopDraft.categories[0]) || categories[0].name,photo:null}];
+  shopDraftItems = [{name:"",description:"",price:"",category:(shopDraft.categories && shopDraft.categories[0]) || categories[0].name,photos:[]}];
   shopCoverData = shopDraft.cover || null;
   renderShopStep1();
   document.getElementById('shopOverlay').classList.add('open');
@@ -718,6 +882,7 @@ function renderItemsStep(){
   `;
 }
 function renderItemEntry(it, idx){
+  const photos = it.photos||[];
   return `
     <div class="item-entry" data-idx="${idx}">
       ${shopDraftItems.length>1 ? `<button class="remove-item" onclick="removeItemEntry(${idx})">✕ remove</button>`:''}
@@ -732,24 +897,31 @@ function renderItemEntry(it, idx){
         </div>
       </div>
       <div class="form-field">
-        <label>Photo</label>
-        <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="previewItemPhoto(event,${idx})"></label>
-        <div id="itemPhotoPreview${idx}" style="margin-top:6px;">${it.photo?`<img src="${it.photo}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;">`:''}</div>
+        <label>Photos (up to ${MAX_PHOTOS_PER_ITEM})</label>
+        ${photos.length < MAX_PHOTOS_PER_ITEM ? `<label class="photo-upload">📷 Add photo<input type="file" accept="image/*" onchange="addItemEntryPhoto(event,${idx})"></label>` : `<div style="font-size:11.5px;color:var(--muted);">Maximum photos reached.</div>`}
+        <div class="photo-thumbs-row" id="itemPhotoPreview${idx}">${photos.map((p,pi)=>`<div class="photo-thumb"><img src="${p}"><button class="rm" onclick="removeItemEntryPhoto(${idx},${pi})">✕</button></div>`).join("")}</div>
       </div>
     </div>
   `;
 }
 function updateItemField(idx, field, value){ shopDraftItems[idx][field] = value; }
-function previewItemPhoto(e, idx){
+function addItemEntryPhoto(e, idx){
   const file = e.target.files[0];
   if(!file) return;
+  if((shopDraftItems[idx].photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
   compressImage(file, dataUrl=>{
-    shopDraftItems[idx].photo = dataUrl;
-    document.getElementById('itemPhotoPreview'+idx).innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;">`;
+    if(!shopDraftItems[idx].photos) shopDraftItems[idx].photos = [];
+    shopDraftItems[idx].photos.push(dataUrl);
+    renderItemsStep();
   });
 }
+function removeItemEntryPhoto(idx, photoIdx){
+  shopDraftItems[idx].photos.splice(photoIdx,1);
+  renderItemsStep();
+}
 function addItemEntry(){
-  shopDraftItems.push({name:"",description:"",price:"",category:shopDraft.categories[0]||categories[0].name,photo:null});
+  if(shopDraftItems.length >= MAX_ITEMS_PER_SHOP){ showToast('Maximum '+MAX_ITEMS_PER_SHOP+' items per shop.'); return; }
+  shopDraftItems.push({name:"",description:"",price:"",category:shopDraft.categories[0]||categories[0].name,photos:[]});
   renderItemsStep();
 }
 function removeItemEntry(idx){
@@ -801,6 +973,9 @@ function fakeAdmin(){
   }
 }
 let adminTab = 'overview';
+let adminShopSearch = '';
+let adminItemSearch = '';
+let resetPasswordShopId = null;
 function showAdminDashboard(){ adminTab='overview'; renderAdminDashboard(); }
 function setAdminTab(tab){ adminTab=tab; renderAdminDashboard(); }
 function tabBtn(id,label,count){
@@ -825,8 +1000,22 @@ function renderAdminDashboard(){
       ${tabBtn('items','All Items', items.length)}
     </div>
     <div id="adminTabContent">${renderAdminTabContent()}</div>
-    <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="closeModal('adminOverlay')">Close</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="exportBackup()">⬇ Export data backup (.json)</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="closeModal('adminOverlay')">Close</button>
   `;
+}
+function exportBackup(){
+  const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'jad-online-store-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded.');
 }
 let adminReviewShopId = null;
 function renderAdminTabContent(){
@@ -869,10 +1058,10 @@ function renderShopReview(){
     <div style="font-weight:700;font-size:13px;margin:14px 0 8px;">Submitted items (${s.draftItems.length})</div>
     ${s.draftItems.map(it=>`
       <div class="review-box" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-        <div style="width:50px;height:50px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${it.photo?'#000':thumbGradient(it.name.length)}">${thumbHTML(it)}</div>
+        <div style="width:50px;height:50px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.name.length)}">${thumbHTML(it)}</div>
         <div style="flex:1;">
           <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price}</div>
-          <div style="font-size:11px;color:var(--muted);">${it.category}${!it.photo?' · <span style=\"color:var(--rust);\">⚠️ no photo</span>':''}</div>
+          <div style="font-size:11px;color:var(--muted);">${it.category}${!itemPhotos(it).length?' · <span style=\"color:var(--rust);\">⚠️ no photo</span>':''}</div>
         </div>
       </div>
     `).join("")}
@@ -898,7 +1087,7 @@ function approveShop(id){
   const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
   shops.push(newShop);
   s.draftItems.forEach((it,i)=>{
-    items.push({id: s.id*100+i, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, photo:it.photo, inStock:true});
+    items.push({id: s.id*100+i, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, photos:it.photos||(it.photo?[it.photo]:[]), inStock:true, views:0, whatsappClicks:0});
   });
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
@@ -918,24 +1107,54 @@ function rejectShop(id){
 }
 
 function renderAllShopsTab(){
+  const q = adminShopSearch.toLowerCase();
+  const filtered = shops.filter(s=>!q || s.name.toLowerCase().includes(q) || s.location.toLowerCase().includes(q));
   return `
-    <div style="max-height:380px;overflow-y:auto;padding-right:2px;">
-      ${shops.map((s,i)=>`
-        <div class="shop-box" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${s.cover?'#000':thumbGradient(i)}">${thumbHTML({photo:s.cover,category:s.categories[0]})}</div>
-          <div style="flex:1;min-width:0;">
-            <div class="sname" style="font-size:13px;">#${i+1} — ${s.name}</div>
-            <div style="font-size:11.5px;color:var(--muted);">📍 ${s.location} · ${items.filter(it=>it.shopId===s.id).length} items</div>
+    <div class="form-field" style="margin-bottom:10px;"><input placeholder="Search shops by name or location…" value="${adminShopSearch}" oninput="adminShopSearch=this.value;renderAdminDashboard();"></div>
+    <div style="max-height:340px;overflow-y:auto;padding-right:2px;">
+      ${filtered.length ? filtered.map((s)=>{
+        const i = shops.findIndex(x=>x.id===s.id);
+        return `
+        <div class="shop-box" style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${s.cover?'#000':thumbGradient(i)}">${thumbHTML({photo:s.cover,category:s.categories[0]})}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="sname" style="font-size:13px;">#${i+1} — ${s.name}</div>
+              <div style="font-size:11.5px;color:var(--muted);">📍 ${s.location} · ${items.filter(it=>it.shopId===s.id).length} items</div>
+            </div>
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0;">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
             <button class="btn btn-outline btn-sm" onclick="moveShop(${s.id},-1)" ${i===0?'disabled':''}>↑ First</button>
             <button class="btn btn-outline btn-sm" onclick="moveShop(${s.id},1)" ${i===shops.length-1?'disabled':''}>↓ Last</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleResetPassword(${s.id})">🔑 Reset password</button>
             <button class="btn btn-outline btn-sm" style="color:var(--rust);border-color:var(--rust);" onclick="deleteShop(${s.id})">Delete</button>
           </div>
+          ${resetPasswordShopId===s.id ? `
+            <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--stone-dark);">
+              <div class="form-field" style="margin-bottom:8px;"><label>New password for ${s.name}</label><input id="newPassInput${s.id}" placeholder="Set a new password"></div>
+              <button class="btn btn-primary btn-sm" style="width:100%;" onclick="confirmResetPassword(${s.id})">Save new password</button>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px;">Remember to send this password to the shop owner yourself (e.g. via WhatsApp) — they won't be notified automatically.</div>
+            </div>
+          ` : ''}
         </div>
-      `).join("")}
+      `;}).join("") : `<p style="color:var(--muted);font-size:13px;">No shops match that search.</p>`}
     </div>
   `;
+}
+function toggleResetPassword(shopId){
+  resetPasswordShopId = (resetPasswordShopId===shopId) ? null : shopId;
+  renderAdminDashboard();
+}
+function confirmResetPassword(shopId){
+  const input = document.getElementById('newPassInput'+shopId);
+  const newPass = input ? input.value : '';
+  if(!newPass){ showToast('Enter a new password first.'); return; }
+  const shop = shopById(shopId);
+  shop.password = newPass;
+  resetPasswordShopId = null;
+  showToast('Password updated for '+shop.name+'.');
+  renderAdminDashboard();
+  saveState();
 }
 function moveShop(id, dir){
   const idx = shops.findIndex(s=>s.id===id);
@@ -959,20 +1178,23 @@ function deleteShop(id){
 }
 
 function renderAllItemsTab(){
+  const q = adminItemSearch.toLowerCase();
+  const filtered = items.filter(it=>!q || it.name.toLowerCase().includes(q) || it.category.toLowerCase().includes(q));
   return `
-    <div style="max-height:380px;overflow-y:auto;padding-right:2px;">
-      ${items.map((it,i)=>{
+    <div class="form-field" style="margin-bottom:10px;"><input placeholder="Search items by name or category…" value="${adminItemSearch}" oninput="adminItemSearch=this.value;renderAdminDashboard();"></div>
+    <div style="max-height:340px;overflow-y:auto;padding-right:2px;">
+      ${filtered.length ? filtered.map((it,i)=>{
         const shop = shopById(it.shopId);
         return `
         <div class="shop-box" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${it.photo?'#000':thumbGradient(it.id+i)}">${thumbHTML(it)}</div>
+          <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id+i)}">${thumbHTML(it)}</div>
           <div style="flex:1;min-width:0;">
             <div class="sname" style="font-size:13px;">${it.name}</div>
             <div style="font-size:11.5px;color:var(--muted);">${it.price} · ${it.category} · sold by ${shop?shop.name:'—'}</div>
           </div>
           <button class="btn btn-outline btn-sm" style="color:var(--rust);border-color:var(--rust);flex-shrink:0;" onclick="deleteItem(${it.id})">Delete</button>
         </div>`;
-      }).join("")}
+      }).join("") : `<p style="color:var(--muted);font-size:13px;">No items match that search.</p>`}
     </div>
   `;
 }
@@ -1047,8 +1269,12 @@ function renderOwnerLoginTab(){
     <div class="form-field"><label>Password</label><input id="ownerPass" type="password" placeholder="••••••••"></div>
     <div id="ownerLoginError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerLogin()">Log in</button>
+    <div style="margin-top:10px;text-align:center;font-size:12.5px;"><button class="btn btn-outline btn-sm" onclick="forgotOwnerPassword()">Forgot your password?</button></div>
     <div style="margin-top:10px;text-align:center;font-size:13px;color:var(--muted);">Don't have an owner account? <button class="btn btn-outline btn-sm" onclick="renderQuickRegisterOwner()">Create &amp; continue</button></div>
   `;
+}
+function forgotOwnerPassword(){
+  showToast('Password resets are handled by the Jad Online Store admin — contact them directly with your shop\'s phone number.');
 }
 
 function renderQuickRegisterOwner(){
@@ -1104,7 +1330,7 @@ function customerRegister(){
   if(!name || !phone || !pass){ showToast('Please provide name, phone and password.'); return; }
   if(customers.find(c=>normPhone(c.phone)===normPhone(phone))){ showToast('Phone already registered.'); return; }
   const id = Date.now();
-  customers.push({id,name,phone,password:pass});
+  customers.push({id,name,phone,password:pass,favorites:[]});
   currentCustomerId = id;
   showToast('Account created. You are now logged in.');
   renderCustomerDashboard();
@@ -1125,13 +1351,27 @@ function customerLogin(){
 function renderCustomerDashboard(){
   const cont = document.getElementById('ownerTabContent');
   const c = customers.find(x=>x.id===currentCustomerId);
+  const favItems = c ? items.filter(it=>(c.favorites||[]).includes(it.id)) : [];
   cont.innerHTML = `
     <h2>Welcome${c?(', '+c.name):''}</h2>
     <p class="modal-meta">Customer accounts allow you to contact shops directly while logged in.</p>
-    <div style="display:flex;gap:8px;margin-top:12px;">
+    <div style="display:flex;gap:8px;margin-top:4px;margin-bottom:16px;">
       <button class="btn btn-outline" onclick="currentCustomerId=null;renderOwnerTabs('customer')">Account details</button>
       <button class="btn btn-primary" onclick="customerLogout()">Log out</button>
     </div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">♥ My favourites (${favItems.length})</div>
+    ${favItems.length ? favItems.map(it=>{
+      const shop = shopById(it.shopId);
+      return `
+      <div class="review-box" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;" onclick="closeModal('ownerOverlay');openItemModal(${it.id})">
+        <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price}</div>
+          <div style="font-size:11px;color:var(--muted);">${shop?shop.name:'—'}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();toggleFavorite(${it.id});renderCustomerDashboard()">Remove</button>
+      </div>
+    `;}).join("") : `<p style="color:var(--muted);font-size:13px;">Tap the ♡ on any item to save it here.</p>`}
   `;
 }
 
@@ -1148,12 +1388,14 @@ function renderOwnerDashboard(){
   const shop = currentOwnerShop();
   if(!shop){ loggedInShopId=null; return; }
   const myItems = items.filter(it=>it.shopId===shop.id);
+  const rating = shopRating(shop);
   const body = document.getElementById('ownerModalBody');
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <h2 style="margin-bottom:2px;">${shop.name}</h2>
         <div style="font-size:12.5px;color:var(--muted);">📍 ${shop.location} · ${myItems.length} item${myItems.length===1?'':'s'} live</div>
+        ${rating ? `<div class="star-row" style="margin-top:4px;">${starRow(rating.avg)} <span style="color:var(--muted);font-size:11px;">(${rating.count} review${rating.count===1?'':'s'})</span></div>` : ''}
       </div>
       <button class="btn btn-outline btn-sm" onclick="ownerLogout()">Log out</button>
     </div>
@@ -1161,14 +1403,14 @@ function renderOwnerDashboard(){
       <button class="btn btn-primary" style="flex:1;" onclick="ownerAddItemForm()">+ Add new item</button>
       <button class="btn btn-outline" style="flex:1;" onclick="ownerEditShopForm()">Edit shop info</button>
     </div>
-    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Your items</div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Your items (${myItems.length}/${MAX_ITEMS_PER_SHOP})</div>
     <div id="ownerItemsList">
       ${myItems.length ? myItems.map(it=>`
         <div class="review-box" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;${it.inStock?'':'opacity:0.6;'}">
-          <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${it.photo?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
+          <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price} ${it.inStock?'':'<span style="color:var(--rust);font-weight:700;">· OUT OF STOCK</span>'}</div>
-            <div style="font-size:11px;color:var(--muted);">${it.category}</div>
+            <div style="font-size:11px;color:var(--muted);">${it.category} · 👁 ${it.views||0} views · 💬 ${it.whatsappClicks||0} contacts</div>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:180px;">
             <button class="btn btn-outline btn-sm" onclick="ownerToggleStock(${it.id})">${it.inStock?'Mark out of stock':'Mark in stock'}</button>
@@ -1182,18 +1424,24 @@ function renderOwnerDashboard(){
 }
 
 function ownerAddItemForm(){
+  const myItemCount = items.filter(it=>it.shopId===loggedInShopId).length;
+  if(myItemCount >= MAX_ITEMS_PER_SHOP){
+    showToast('You\'ve reached the maximum of '+MAX_ITEMS_PER_SHOP+' items. Delete an old one to add a new item.');
+    return;
+  }
   ownerEditingItemId = null;
-  ownerItemDraft = {name:"",description:"",price:"",category:currentOwnerShop().categories[0]||categories[0].name,photo:null};
+  ownerItemDraft = {name:"",description:"",price:"",category:currentOwnerShop().categories[0]||categories[0].name,photos:[]};
   renderOwnerItemForm('Add new item');
 }
 function ownerEditItemForm(id){
   const it = items.find(x=>x.id===id);
   ownerEditingItemId = id;
-  ownerItemDraft = {name:it.name, description:it.description, price:it.price, category:it.category, photo:it.photo};
+  ownerItemDraft = {name:it.name, description:it.description, price:it.price, category:it.category, photos:itemPhotos(it).slice()};
   renderOwnerItemForm('Edit item');
 }
 function renderOwnerItemForm(title){
   const body = document.getElementById('ownerModalBody');
+  const photos = ownerItemDraft.photos||[];
   body.innerHTML = `
     <button class="btn btn-outline btn-sm" onclick="renderOwnerDashboard()">← Back</button>
     <h2 style="margin-top:12px;">${title}</h2>
@@ -1208,9 +1456,9 @@ function renderOwnerItemForm(title){
       </div>
     </div>
     <div class="form-field">
-      <label>Photo</label>
-      <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="ownerPreviewPhoto(event)"></label>
-      <div id="oiPhotoPreview" style="margin-top:6px;">${ownerItemDraft.photo?`<img src="${ownerItemDraft.photo}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
+      <label>Photos (up to ${MAX_PHOTOS_PER_ITEM})</label>
+      ${photos.length < MAX_PHOTOS_PER_ITEM ? `<label class="photo-upload">📷 Add photo<input type="file" accept="image/*" onchange="ownerPreviewPhoto(event)"></label>` : `<div style="font-size:11.5px;color:var(--muted);">Maximum photos reached.</div>`}
+      <div class="photo-thumbs-row" id="oiPhotoPreview">${photos.map((p,pi)=>`<div class="photo-thumb"><img src="${p}"><button class="rm" onclick="removeOwnerItemPhoto(${pi})">✕</button></div>`).join("")}</div>
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveItem()">Save item</button>
   `;
@@ -1218,10 +1466,16 @@ function renderOwnerItemForm(title){
 function ownerPreviewPhoto(e){
   const file = e.target.files[0];
   if(!file) return;
+  if((ownerItemDraft.photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
   compressImage(file, dataUrl=>{
-    ownerItemDraft.photo = dataUrl;
-    document.getElementById('oiPhotoPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+    if(!ownerItemDraft.photos) ownerItemDraft.photos = [];
+    ownerItemDraft.photos.push(dataUrl);
+    renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
   });
+}
+function removeOwnerItemPhoto(photoIdx){
+  ownerItemDraft.photos.splice(photoIdx,1);
+  renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
 }
 function ownerSaveItem(){
   const name = document.getElementById('oiName').value.trim();
@@ -1234,10 +1488,11 @@ function ownerSaveItem(){
   }
   if(ownerEditingItemId){
     const it = items.find(x=>x.id===ownerEditingItemId);
-    it.name=name; it.description=desc; it.price=price; it.category=category; it.photo=ownerItemDraft.photo;
+    it.name=name; it.description=desc; it.price=price; it.category=category; it.photos=ownerItemDraft.photos;
+    delete it.photo; // old single-photo field is superseded by the photos array
     showToast('Item updated.');
   }else{
-    items.push({id:Date.now(), shopId:loggedInShopId, name, description:desc, price, category, photo:ownerItemDraft.photo, inStock:true});
+    items.push({id:Date.now(), shopId:loggedInShopId, name, description:desc, price, category, photos:ownerItemDraft.photos, inStock:true, views:0, whatsappClicks:0});
     showToast('Item added — it\'s live on the storefront.');
   }
   renderCatGrid();
