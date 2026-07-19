@@ -419,7 +419,7 @@ function showSyncBadge(msg){
 }
 
 function currentStateObject(){
-  return { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId };
+  return { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, passwordResetRequests };
 }
 
 async function saveState(){
@@ -469,6 +469,7 @@ async function loadState({ silent } = {}){
     if(s.items) items = s.items;
     if(s.pendingShops) pendingShops = s.pendingShops;
     if(s.loggedInShopId !== undefined) loggedInShopId = s.loggedInShopId;
+    if(s.passwordResetRequests) passwordResetRequests = s.passwordResetRequests;
     lastSavedSnapshot = incomingJson;
     return true;
   }catch(e){
@@ -976,6 +977,7 @@ let adminTab = 'overview';
 let adminShopSearch = '';
 let adminItemSearch = '';
 let resetPasswordShopId = null;
+let passwordResetRequests = [];
 function showAdminDashboard(){ adminTab='overview'; renderAdminDashboard(); }
 function setAdminTab(tab){ adminTab=tab; renderAdminDashboard(); }
 function tabBtn(id,label,count){
@@ -996,6 +998,7 @@ function renderAdminDashboard(){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
       ${tabBtn('overview','Overview')}
       ${tabBtn('pending','Pending Shop Requests', pendingShops.length)}
+      ${tabBtn('resets','Password Resets', passwordResetRequests.length)}
       ${tabBtn('shops','All Shops', shops.length)}
       ${tabBtn('items','All Items', items.length)}
     </div>
@@ -1005,7 +1008,7 @@ function renderAdminDashboard(){
   `;
 }
 function exportBackup(){
-  const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, exportedAt: new Date().toISOString() };
+  const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, passwordResetRequests, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1021,9 +1024,41 @@ let adminReviewShopId = null;
 function renderAdminTabContent(){
   if(adminReviewShopId!==null) return renderShopReview();
   if(adminTab==='pending') return renderPendingShopsTab();
+  if(adminTab==='resets') return renderPasswordResetsTab();
   if(adminTab==='shops') return renderAllShopsTab();
   if(adminTab==='items') return renderAllItemsTab();
   return `<p style="font-size:13px;color:var(--muted);">Use the tabs above to review shop signup requests (with their submitted items), manage which shops appear first, and moderate every item on the platform.</p>`;
+}
+function renderPasswordResetsTab(){
+  return passwordResetRequests.length ? passwordResetRequests.map(r=>`
+    <div class="shop-box" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+        <div>
+          <div class="sname">${r.shopName || 'Unmatched phone number'}</div>
+          <div class="sloc">📞 ${r.phone}${r.shopName? '' : ' — no shop found with this number'}</div>
+          ${r.note ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">"${r.note}"</div>` : ''}
+          <div style="font-size:10.5px;color:var(--muted);margin-top:4px;">${new Date(r.date).toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        ${r.shopId ? `<button class="btn btn-primary btn-sm" onclick="resolvePasswordReset(${r.id},${r.shopId})">🔑 Reset password now</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="dismissPasswordReset(${r.id})">Dismiss</button>
+      </div>
+    </div>
+  `).join("") : `<p style="color:var(--muted);font-size:13px;">No password reset requests right now.</p>`;
+}
+function resolvePasswordReset(requestId, shopId){
+  passwordResetRequests = passwordResetRequests.filter(r=>r.id!==requestId);
+  adminTab = 'shops';
+  resetPasswordShopId = shopId;
+  renderAdminDashboard();
+  saveState();
+}
+function dismissPasswordReset(requestId){
+  passwordResetRequests = passwordResetRequests.filter(r=>r.id!==requestId);
+  showToast('Request dismissed.');
+  renderAdminDashboard();
+  saveState();
 }
 
 function renderPendingShopsTab(){
@@ -1269,12 +1304,40 @@ function renderOwnerLoginTab(){
     <div class="form-field"><label>Password</label><input id="ownerPass" type="password" placeholder="••••••••"></div>
     <div id="ownerLoginError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerLogin()">Log in</button>
-    <div style="margin-top:10px;text-align:center;font-size:12.5px;"><button class="btn btn-outline btn-sm" onclick="forgotOwnerPassword()">Forgot your password?</button></div>
+    <div style="margin-top:10px;text-align:center;font-size:12.5px;"><button class="btn btn-outline btn-sm" onclick="toggleForgotPasswordForm()">Forgot your password?</button></div>
+    <div id="forgotPasswordWrap"></div>
     <div style="margin-top:10px;text-align:center;font-size:13px;color:var(--muted);">Don't have an owner account? <button class="btn btn-outline btn-sm" onclick="renderQuickRegisterOwner()">Create &amp; continue</button></div>
   `;
 }
-function forgotOwnerPassword(){
-  showToast('Password resets are handled by the Jad Online Store admin — contact them directly with your shop\'s phone number.');
+function toggleForgotPasswordForm(){
+  const wrap = document.getElementById('forgotPasswordWrap');
+  if(!wrap) return;
+  if(wrap.innerHTML.trim()){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--stone-dark);">
+      <p class="modal-meta" style="margin-bottom:10px;">Send a password reset request to the Jad Online Store admin. They'll set a new password and get in touch with you directly.</p>
+      <div class="form-field"><label>Your shop's phone number</label><input id="fpPhone" placeholder="+961 3 xxx xxx"></div>
+      <div class="form-field"><label>Note (optional)</label><textarea id="fpNote" placeholder="Anything that helps the admin identify your shop"></textarea></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitPasswordResetRequest()">Send request</button>
+    </div>
+  `;
+}
+function submitPasswordResetRequest(){
+  const phone = document.getElementById('fpPhone').value.trim();
+  const note = document.getElementById('fpNote').value.trim();
+  if(!phone){ showToast('Enter your shop\'s phone number first.'); return; }
+  const shop = shops.find(s=>normPhone(s.phone)===normPhone(phone));
+  passwordResetRequests.push({
+    id: Date.now(),
+    phone,
+    note,
+    shopName: shop ? shop.name : null,
+    shopId: shop ? shop.id : null,
+    date: new Date().toISOString()
+  });
+  document.getElementById('forgotPasswordWrap').innerHTML = '';
+  showToast('Request sent — the admin will reset your password and reach out to you.');
+  saveState();
 }
 
 function renderQuickRegisterOwner(){
