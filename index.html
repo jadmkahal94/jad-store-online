@@ -91,6 +91,34 @@ header.main{
 .btn-sm{padding:7px 13px;font-size:10px;}
 .btn:disabled{opacity:0.4;cursor:not-allowed;}
 
+/* ---------- Hero (shop background) ---------- */
+.hero{
+  position:relative;
+  min-height:340px;
+  display:flex;
+  align-items:center;
+  background-image:
+    linear-gradient(180deg, rgba(20,32,27,0.55) 0%, rgba(20,32,27,0.78) 100%),
+    url('https://images.unsplash.com/photo-1769107805412-90d9191d53e9?fm=jpg&q=80&w=1800&auto=format&fit=crop');
+  background-size:cover;
+  background-position:center;
+  background-attachment:scroll;
+}
+.hero-inner{
+  max-width:1240px;margin:0 auto;padding:0 28px;color:#fff;
+}
+.hero-inner .eyebrow{color:var(--gold);}
+.hero-inner h1{
+  font-size:40px;color:#fff;margin:8px 0 12px;line-height:1.1;max-width:560px;
+}
+.hero-inner p{
+  font-size:15px;color:#EDE6D6;max-width:480px;line-height:1.6;margin:0 0 22px;
+}
+@media (max-width:900px){
+  .hero{min-height:260px;}
+  .hero-inner h1{font-size:28px;}
+}
+
 /* ---------- Shop directory rail ---------- */
 .shop-rail-wrap{background:var(--ink);padding:18px 0;}
 .shop-rail-head{max-width:1240px;margin:0 auto 12px;padding:0 28px;color:#fff;display:flex;justify-content:space-between;align-items:baseline;}
@@ -271,6 +299,14 @@ footer{background:var(--ink);color:#DAD2C2;padding:36px 28px 24px;margin-top:40p
     <button class="btn btn-outline" onclick="openShopModal()">+ Register Your Shop</button>
   </div>
 </header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Independent Fashion Marketplace</div>
+    <h1>Curated clothing from Lebanon's own shops</h1>
+    <p>Browse pieces from local shops across Lebanon and connect with them directly — no middleman, no markup.</p>
+  </div>
+</div>
 
 <div class="shop-rail-wrap">
   <div class="shop-rail-head">
@@ -950,8 +986,10 @@ function submitShopRegistration(){
   renderShopRail();
   renderCatGrid();
   renderItems();
-  // Refresh admin dashboard if open so the pending request appears immediately
-  try{ renderAdminDashboard(); }catch(e){ /* ignore if admin UI not initialized */ }
+  // Refresh admin dashboard ONLY if the admin is genuinely logged in right now —
+  // otherwise this would silently populate the admin modal for the next person
+  // who clicks "Admin login", letting them in without a password.
+  if(isAdminAuthenticated){ try{ renderAdminDashboard(); }catch(e){} }
   // Do not auto-open admin panel for security — admin must log in with credentials to view pending shops
   closeModal('shopOverlay');
   showToast('Shop submitted for approval! Our admin team will review it shortly.');
@@ -961,17 +999,42 @@ function submitShopRegistration(){
 /* ================= Admin ================= */
 const ADMIN_USER = "jadmkahal";
 const ADMIN_PASS = "jad@1994mkahal";
-function openAdminModal(){ document.getElementById('adminOverlay').classList.add('open'); }
+let isAdminAuthenticated = false; // only true after a correct username+password on THIS visit
+
+function renderAdminLoginForm(){
+  document.getElementById('adminModalBody').innerHTML = `
+    <h2>Admin control panel</h2>
+    <p class="modal-meta">Restricted access — username &amp; password only.</p>
+    <div class="form-field"><label>Username</label><input id="adminUser" placeholder="jadmkahal"></div>
+    <div class="form-field"><label>Password</label><input id="adminPass" type="password" placeholder="••••••••"></div>
+    <div id="adminError" style="color:var(--rust);font-size:12.5px;margin-bottom:10px;display:none;">Incorrect username or password.</div>
+    <button class="btn btn-primary" style="width:100%;" onclick="fakeAdmin()">Sign in</button>
+  `;
+}
+function openAdminModal(){
+  // Always show the login form unless we've already authenticated this session —
+  // never trust whatever HTML happens to be left over in adminModalBody.
+  if(!isAdminAuthenticated) renderAdminLoginForm();
+  else showAdminDashboard();
+  document.getElementById('adminOverlay').classList.add('open');
+}
 function fakeAdmin(){
   const u = document.getElementById('adminUser').value.trim();
   const p = document.getElementById('adminPass').value;
   const err = document.getElementById('adminError');
   if(u===ADMIN_USER && p===ADMIN_PASS){
     err.style.display='none';
+    isAdminAuthenticated = true;
     showAdminDashboard();
   }else{
     err.style.display='block';
   }
+}
+function adminLogout(){
+  isAdminAuthenticated = false;
+  closeModal('adminOverlay');
+  renderAdminLoginForm(); // reset so the next open shows the login form, not stale dashboard data
+  showToast('Logged out of admin panel.');
 }
 let adminTab = 'overview';
 let adminShopSearch = '';
@@ -1005,6 +1068,7 @@ function renderAdminDashboard(){
     <div id="adminTabContent">${renderAdminTabContent()}</div>
     <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="exportBackup()">⬇ Export data backup (.json)</button>
     <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="closeModal('adminOverlay')">Close</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;color:var(--rust);border-color:var(--rust);" onclick="adminLogout()">Log out of admin panel</button>
   `;
 }
 function exportBackup(){
