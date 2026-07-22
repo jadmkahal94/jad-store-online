@@ -440,6 +440,11 @@ const MAX_PHOTOS_PER_ITEM = 4;
    so every phone/computer sees the same shops, items and pending requests. */
 const FIREBASE_URL = "https://jad-store-online-default-rtdb.europe-west1.firebasedatabase.app/";
 const STATE_PATH = "state.json";
+// Photos live in their own separate file so the main state (names, prices, shops) stays
+// small and fast to load. Images load in afterward and fill in progressively.
+const PHOTOS_PATH = "photos.json";
+let photoStore = {}; // keys: "shop:<id>" -> single base64 string, "item:<id>" -> array of base64 strings
+let lastSavedPhotosSnapshot = "";
 
 function showSyncBadge(msg){
   const b = document.getElementById('syncBadge');
@@ -474,11 +479,19 @@ async function saveState(){
     const state = currentStateObject();
     const json = JSON.stringify(state);
     lastSavedSnapshot = json;
-    const res = await fetch(FIREBASE_URL + STATE_PATH, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: json
-    });
+    const photosJson = JSON.stringify(photoStore);
+    const needPhotoSave = photosJson !== lastSavedPhotosSnapshot;
+    const requests = [
+      fetch(FIREBASE_URL + STATE_PATH, { method:"PUT", headers:{"Content-Type":"application/json"}, body: json })
+    ];
+    // Only re-upload the (much heavier) photos file when photos actually changed —
+    // most actions (price edit, stock toggle, approval...) don't touch photos at all.
+    if(needPhotoSave){
+      requests.push(fetch(FIREBASE_URL + PHOTOS_PATH, { method:"PUT", headers:{"Content-Type":"application/json"}, body: photosJson }));
+    }
+    const results = await Promise.all(requests);
+    const res = results[0];
+    if(needPhotoSave && results[1] && results[1].ok) lastSavedPhotosSnapshot = photosJson;
     if(!res.ok){
       console.warn("saveState: Firebase responded with", res.status);
       showSyncBadge("⚠️ Could not sync — check your connection");
@@ -523,6 +536,53 @@ async function loadState({ silent } = {}){
   }
 }
 
+// Photos load separately from the main state — this keeps the initial "names, prices,
+// shops" load fast, while images arrive shortly after and fill in progressively.
+async function loadPhotos(){
+  try{
+    const res = await fetch(FIREBASE_URL + PHOTOS_PATH, { cache: "no-store" });
+    if(!res.ok) return false;
+    const p = await res.json();
+    if(!p) return false;
+    const incomingJson = JSON.stringify(p);
+    if(incomingJson === lastSavedPhotosSnapshot) return false;
+    photoStore = p;
+    lastSavedPhotosSnapshot = incomingJson;
+    return true;
+  }catch(e){
+    console.warn('loadPhotos failed', e);
+    return false;
+  }
+}
+
+// One-time cleanup: older shops/items still have their photos embedded directly inline
+// (from before photos got their own file). This moves any such photos into the separate
+// photo store and strips them out of the shop/item objects, so state.json shrinks for good.
+function migrateInlinePhotos(){
+  let migrated = false;
+  items.forEach(it=>{
+    if(Array.isArray(it.photos) && it.photos.length){
+      if(!photoStore['item:'+it.id]) photoStore['item:'+it.id] = it.photos;
+      delete it.photos;
+      migrated = true;
+    }
+    if(it.photo){
+      const key = 'item:'+it.id;
+      if(!photoStore[key]) photoStore[key] = [it.photo];
+      delete it.photo;
+      migrated = true;
+    }
+  });
+  shops.forEach(s=>{
+    if(s.cover){
+      if(!photoStore['shop:'+s.id]) photoStore['shop:'+s.id] = s.cover;
+      delete s.cover;
+      migrated = true;
+    }
+  });
+  return migrated;
+}
+
 // Re-render whatever is currently visible after a background sync picks up new data
 function reRenderEverything(){
   renderShopRail();
@@ -536,13 +596,19 @@ function reRenderEverything(){
 // Poll the shared database every few seconds so changes made on other devices
 // (a new shop submitted on a phone, an approval done on a laptop, etc.) show up
 // here without needing a manual page refresh.
+let syncTickCount = 0;
 function startSyncLoop(){
   setInterval(async ()=>{
     // Don't let a background sync tick fetch stale data while a save (like an approval)
     // is actively in flight — that stale data could overwrite the change before it lands.
     if(isSaving) return;
+    syncTickCount++;
     const changed = await loadState({ silent:true });
-    if(changed) reRenderEverything();
+    // Photos are the heavy part — only re-check them roughly every ~24s to save bandwidth,
+    // since text/price/stock changes are far more time-sensitive than new photos syncing in.
+    let photosChanged = false;
+    if(syncTickCount % 6 === 0) photosChanged = await loadPhotos();
+    if(changed || photosChanged) reRenderEverything();
   }, 4000);
 }
 
@@ -584,9 +650,18 @@ function thumbHTML(item){
 // Items used to store a single `photo` string; they now store a `photos` array.
 // This reads either shape so old data (and shop covers, which stay single-photo) keep working.
 function itemPhotos(item){
-  if(Array.isArray(item.photos) && item.photos.length) return item.photos;
+  if(Array.isArray(item.photos) && item.photos.length) return item.photos; // not-yet-migrated inline data
   if(item.photo) return [item.photo];
+  const stored = item.id!=null ? photoStore['item:'+item.id] : null; // photos stored separately (the normal case now)
+  if(Array.isArray(stored) && stored.length) return stored;
   return [];
+}
+// Shop covers follow the same pattern — a shop's own `.cover` (legacy/not-yet-migrated)
+// takes priority, otherwise we look it up in the separate photo store.
+function getShopCover(shop){
+  if(!shop) return null;
+  if(shop.cover) return shop.cover;
+  return (shop.id!=null ? photoStore['shop:'+shop.id] : null) || null;
 }
 function stars(){ return ''; }
 function starRow(rating){
@@ -651,7 +726,7 @@ function renderShopRail(){
   const rail = document.getElementById('shopRail');
   rail.innerHTML = shops.map((s,i)=>`
     <div class="shop-chip ${shopFilter===s.id?'active':''}" onclick="filterByShop(${s.id})">
-      <div class="cover" style="background:${s.cover?'#000':thumbGradient(i)};overflow:hidden;">${thumbHTML({photo:s.cover,category:s.categories[0]})}</div>
+      <div class="cover" style="background:${getShopCover(s)?'#000':thumbGradient(i)};overflow:hidden;">${thumbHTML({photo:getShopCover(s),category:s.categories[0]})}</div>
       <div class="name">${s.name}</div>
       <div class="loc">📍 ${s.location}</div>
     </div>
@@ -1095,7 +1170,7 @@ function renderAdminDashboard(){
   `;
 }
 function exportBackup(){
-  const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, passwordResetRequests, exportedAt: new Date().toISOString() };
+  const state = { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, passwordResetRequests, photoStore, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1137,6 +1212,8 @@ function importBackup(e){
     pendingShops = data.pendingShops || [];
     loggedInShopId = data.loggedInShopId ?? null;
     passwordResetRequests = data.passwordResetRequests || [];
+    photoStore = data.photoStore || {};
+    lastSavedPhotosSnapshot = ''; // force the photos file to be re-uploaded too
     reRenderEverything();
     saveState();
     showToast('✓ Backup restored — ' + shopCount + ' shops, ' + itemCount + ' items.');
@@ -1250,10 +1327,16 @@ async function approveShop(id){
     reRenderEverything();
     return;
   }
-  const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
+  // Move the cover/item photos into the separate photo store instead of embedding
+  // them in the shop/item objects — keeps the main data file light going forward.
+  if(s.cover) photoStore['shop:'+s.id] = s.cover;
+  const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description};
   shops.push(newShop);
   s.draftItems.forEach((it,i)=>{
-    items.push({id: s.id*100+i, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, photos:it.photos||(it.photo?[it.photo]:[]), inStock:true, views:0, whatsappClicks:0});
+    const itemId = s.id*100+i;
+    const photos = it.photos||(it.photo?[it.photo]:[]);
+    if(photos.length) photoStore['item:'+itemId] = photos;
+    items.push({id: itemId, shopId: s.id, name:it.name, description:it.description, price:it.price, category:it.category, inStock:true, views:0, whatsappClicks:0});
   });
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
@@ -1283,7 +1366,7 @@ function renderAllShopsTab(){
         return `
         <div class="shop-box" style="margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${s.cover?'#000':thumbGradient(i)}">${thumbHTML({photo:s.cover,category:s.categories[0]})}</div>
+            <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${getShopCover(s)?'#000':thumbGradient(i)}">${thumbHTML({photo:getShopCover(s),category:s.categories[0]})}</div>
             <div style="flex:1;min-width:0;">
               <div class="sname" style="font-size:13px;">#${i+1} — ${s.name}</div>
               <div style="font-size:11.5px;color:var(--muted);">📍 ${s.location} · ${items.filter(it=>it.shopId===s.id).length} items</div>
@@ -1682,11 +1765,15 @@ function ownerSaveItem(){
   }
   if(ownerEditingItemId){
     const it = items.find(x=>x.id===ownerEditingItemId);
-    it.name=name; it.description=desc; it.price=price; it.category=category; it.photos=ownerItemDraft.photos;
-    delete it.photo; // old single-photo field is superseded by the photos array
+    it.name=name; it.description=desc; it.price=price; it.category=category;
+    if(ownerItemDraft.photos && ownerItemDraft.photos.length) photoStore['item:'+it.id] = ownerItemDraft.photos;
+    else delete photoStore['item:'+it.id];
+    delete it.photo; delete it.photos; // photos now live only in the separate photo store
     showToast('Item updated.');
   }else{
-    items.push({id:Date.now(), shopId:loggedInShopId, name, description:desc, price, category, photos:ownerItemDraft.photos, inStock:true, views:0, whatsappClicks:0});
+    const newId = Date.now();
+    if(ownerItemDraft.photos && ownerItemDraft.photos.length) photoStore['item:'+newId] = ownerItemDraft.photos;
+    items.push({id:newId, shopId:loggedInShopId, name, description:desc, price, category, inStock:true, views:0, whatsappClicks:0});
     showToast('Item added — it\'s live on the storefront.');
   }
   renderCatGrid();
@@ -1727,7 +1814,7 @@ function ownerEditShopForm(){
     <div class="form-field">
       <label>Cover photo</label>
       <label class="photo-upload">📷 Choose photo<input type="file" accept="image/*" onchange="ownerPreviewCover(event)"></label>
-      <div id="osCoverPreview" style="margin-top:6px;">${shop.cover?`<img src="${shop.cover}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
+      <div id="osCoverPreview" style="margin-top:6px;">${getShopCover(shop)?`<img src="${getShopCover(shop)}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`:''}</div>
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="ownerSaveShop()">Save changes</button>
   `;
@@ -1752,7 +1839,11 @@ function ownerSaveShop(){
     return;
   }
   shop.name=name; shop.location=location; shop.description=desc; shop.categories=selectedCats;
-  if(ownerCoverDraft!==undefined) shop.cover=ownerCoverDraft;
+  if(ownerCoverDraft!==undefined){
+    if(ownerCoverDraft) photoStore['shop:'+shop.id] = ownerCoverDraft;
+    else delete photoStore['shop:'+shop.id];
+    delete shop.cover; // cover now lives only in the separate photo store
+  }
   ownerCoverDraft = undefined;
   showToast('Shop info updated.');
   renderShopRail();
@@ -1770,9 +1861,12 @@ renderItems();
 
 (async function init(){
   showSyncBadge("Loading…");
-  await loadState();
+  await loadState();                 // fast: names, prices, shop/item data only
   initialLoadComplete = true;
-  reRenderEverything();
+  const migrated = migrateInlinePhotos(); // one-time: pull any old embedded photos out
+  reRenderEverything();              // page is usable immediately — text/prices show now
+  loadPhotos().then(()=>{ reRenderEverything(); }); // photos arrive shortly after, in background
+  if(migrated) saveState();          // persist the lighter structure once, going forward
   startSyncLoop();
 })();
 </script>
