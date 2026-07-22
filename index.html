@@ -441,10 +441,6 @@ const MAX_PHOTOS_PER_ITEM = 4;
 const FIREBASE_URL = "https://jad-store-online-default-rtdb.europe-west1.firebasedatabase.app/";
 const STATE_PATH = "state.json";
 
-let lastSavedSnapshot = "";      // used to avoid saving right after we just loaded the same data
-let isSaving = false;
-let saveQueued = false;
-
 function showSyncBadge(msg){
   const b = document.getElementById('syncBadge');
   if(!b) return;
@@ -454,11 +450,21 @@ function showSyncBadge(msg){
   window._syncTimer = setTimeout(()=> b.classList.remove('show'), 1500);
 }
 
+let lastSavedSnapshot = "";      // used to avoid saving right after we just loaded the same data
+let isSaving = false;
+let saveQueued = false;
+let initialLoadComplete = false; // guards against saving empty/default data before the real data has loaded
+let lastFetchOk = false; // true once we've confirmed a real successful read from the server
+
 function currentStateObject(){
   return { customers, currentCustomerId, shops, items, pendingShops, loggedInShopId, passwordResetRequests };
 }
 
 async function saveState(){
+  // Never write to the shared database before we've actually pulled the real data down —
+  // otherwise a save that fires early (slow connection, quick tap) could overwrite everyone's
+  // live shops/items with blank starting arrays.
+  if(!initialLoadComplete){ console.warn('saveState skipped — initial load not finished yet'); return; }
   // Debounce/guard so rapid clicks don't fire overlapping writes
   if(isSaving){ saveQueued = true; return; }
   isSaving = true;
@@ -494,6 +500,7 @@ async function loadState({ silent } = {}){
       return false;
     }
     const s = await res.json();
+    lastFetchOk = true; // the request itself succeeded, even if there's nothing new to apply
     if(!s) return false; // database empty (first run)
 
     const incomingJson = JSON.stringify(s);
@@ -974,13 +981,16 @@ function removeItemEntry(idx){
   shopDraftItems.splice(idx,1);
   renderItemsStep();
 }
-function submitShopRegistration(){
+async function submitShopRegistration(){
   const valid = shopDraftItems.filter(it=>it.name.trim() && it.price.trim());
   if(valid.length===0){
     showToast('Add at least one item with a name and price.');
     return;
   }
   valid.forEach(it=>{ it.price = formatPrice(it.price); });
+  // Pull the freshest data first — if someone else registered a shop moments ago,
+  // we don't want our save to overwrite their entry with our own older snapshot.
+  await loadState();
   pendingShops.push({
     id: Date.now(),
     name: shopDraft.name,
@@ -1077,6 +1087,7 @@ function renderAdminDashboard(){
     </div>
     <div id="adminTabContent">${renderAdminTabContent()}</div>
     <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="exportBackup()">⬇ Export data backup (.json)</button>
+    <label class="btn btn-outline" style="width:100%;margin-top:8px;display:block;text-align:center;">⬆ Import data backup (.json)<input type="file" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" onchange="importBackup(event)"></label>
     <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="closeModal('adminOverlay')">Close</button>
     <button class="btn btn-outline" style="width:100%;margin-top:8px;color:var(--rust);border-color:var(--rust);" onclick="adminLogout()">Log out of admin panel</button>
   `;
@@ -1093,6 +1104,44 @@ function exportBackup(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('Backup downloaded.');
+}
+function importBackup(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    let data;
+    try{
+      data = JSON.parse(ev.target.result);
+    }catch(err){
+      showToast('⚠️ This file is not a valid backup (bad JSON).');
+      e.target.value = '';
+      return;
+    }
+    // Basic sanity check — a real backup always has these arrays
+    if(!Array.isArray(data.shops) || !Array.isArray(data.items)){
+      showToast('⚠️ This file doesn\'t look like a Jad Online Store backup.');
+      e.target.value = '';
+      return;
+    }
+    const shopCount = data.shops.length;
+    const itemCount = data.items.length;
+    const ok = confirm('Restore this backup?\n\n' + shopCount + ' shops, ' + itemCount + ' items.\n\nThis will REPLACE all current live data with what\'s in this file. This cannot be undone.');
+    if(!ok){ e.target.value = ''; return; }
+    customers = data.customers || [];
+    currentCustomerId = data.currentCustomerId ?? null;
+    shops = data.shops || [];
+    items = data.items || [];
+    pendingShops = data.pendingShops || [];
+    loggedInShopId = data.loggedInShopId ?? null;
+    passwordResetRequests = data.passwordResetRequests || [];
+    reRenderEverything();
+    saveState();
+    showToast('✓ Backup restored — ' + shopCount + ' shops, ' + itemCount + ' items.');
+    e.target.value = '';
+  };
+  reader.onerror = ()=> showToast('Could not read that file.');
+  reader.readAsText(file);
 }
 let adminReviewShopId = null;
 function renderAdminTabContent(){
@@ -1190,7 +1239,8 @@ function sendShopMessage(){
   showToast('Message sent to shop owner: "'+val+'"');
   document.getElementById('shopMsgInput').value='';
 }
-function approveShop(id){
+async function approveShop(id){
+  await loadState(); // pull latest first so we don't wipe another shop's concurrent registration
   const s = pendingShops.find(x=>x.id===id);
   if(!s) return;
   const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
@@ -1207,7 +1257,8 @@ function approveShop(id){
   renderAdminDashboard();
   saveState();
 }
-function rejectShop(id){
+async function rejectShop(id){
+  await loadState();
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
   showToast('Shop request rejected.');
@@ -1713,7 +1764,16 @@ renderItems();
 
 (async function init(){
   showSyncBadge("Loading…");
-  await loadState();
+  let attempts = 0;
+  while(!lastFetchOk && attempts < 6){
+    await loadState();
+    if(!lastFetchOk){
+      attempts++;
+      showSyncBadge("⚠️ Retrying connection…");
+      await new Promise(r=>setTimeout(r, 1200));
+    }
+  }
+  initialLoadComplete = true;
   reRenderEverything();
   startSyncLoop();
 })();
