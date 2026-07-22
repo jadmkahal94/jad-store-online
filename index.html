@@ -986,16 +986,13 @@ function removeItemEntry(idx){
   shopDraftItems.splice(idx,1);
   renderItemsStep();
 }
-async function submitShopRegistration(){
+function submitShopRegistration(){
   const valid = shopDraftItems.filter(it=>it.name.trim() && it.price.trim());
   if(valid.length===0){
     showToast('Add at least one item with a name and price.');
     return;
   }
   valid.forEach(it=>{ it.price = formatPrice(it.price); });
-  // Pull the freshest data first — if someone else registered a shop moments ago,
-  // we don't want our save to overwrite their entry with our own older snapshot.
-  await loadState();
   pendingShops.push({
     id: Date.now(),
     name: shopDraft.name,
@@ -1245,9 +1242,14 @@ function sendShopMessage(){
   document.getElementById('shopMsgInput').value='';
 }
 async function approveShop(id){
-  await loadState(); // pull latest first so we don't wipe another shop's concurrent registration
   const s = pendingShops.find(x=>x.id===id);
-  if(!s) return;
+  if(!s){
+    // Don't fail silently — tell the admin what happened and refresh the list.
+    showToast('⚠️ Could not find this request — refreshing the list, please try again.');
+    await loadState();
+    reRenderEverything();
+    return;
+  }
   const newShop = {id:s.id, name:s.name, phone:s.phone, password:s.password, location:s.location, categories:s.categories, description:s.description, cover:s.cover};
   shops.push(newShop);
   s.draftItems.forEach((it,i)=>{
@@ -1263,7 +1265,6 @@ async function approveShop(id){
   saveState();
 }
 async function rejectShop(id){
-  await loadState();
   pendingShops = pendingShops.filter(x=>x.id!==id);
   adminReviewShopId = null;
   showToast('Shop request rejected.');
