@@ -554,14 +554,6 @@ function displayPrice(p){
 }
 // Used when SAVING a price (not just displaying it) so stored data is consistent from the start.
 const formatPrice = displayPrice;
-// Shop owners often just type "25" instead of "$25" — this makes sure a price always
-// displays with a $ sign, without forcing them to type the symbol themselves.
-function formatPrice(p){
-  p = (p||'').trim();
-  if(!p) return p;
-  if(!/^\$/.test(p)) p = '$' + p;
-  return p;
-}
 function thumbGradient(seed){
   const grads = [
     "linear-gradient(135deg,#E8F8FF,#D2EDFF)",
