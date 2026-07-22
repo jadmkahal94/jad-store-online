@@ -180,7 +180,7 @@ select.sortSelect{padding:9px 12px;border:1px solid var(--stone-dark);border-rad
 .modal{background:#fff;border-radius:2px;max-width:640px;width:100%;overflow:hidden;animation:pop .18s ease;}
 @keyframes pop{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 .modal-close{position:absolute;top:14px;right:18px;font-size:22px;color:var(--muted);background:none;border:none;z-index:2;}
-.modal-hero{height:230px;display:flex;align-items:center;justify-content:center;font-size:70px;position:relative;color:rgba(255,255,255,0.95);overflow:hidden;border-bottom:1px solid rgba(20,31,43,0.06);}
+.modal-hero{height:280px;display:flex;align-items:center;justify-content:center;font-size:70px;position:relative;color:rgba(255,255,255,0.95);overflow:hidden;border-bottom:1px solid rgba(20,31,43,0.06);background:#F1ECDF;}
 .modal-content{padding:24px 28px 28px;position:relative;}
 .modal-content h2{font-size:22px;margin:0 0 4px;}
 .modal-price{font-family:'Bodoni Moda';font-size:26px;font-weight:700;color:var(--rust);margin:6px 0;}
@@ -545,6 +545,23 @@ function normPhone(p){
 function catIcon(name){ const c = categories.find(x=>x.name===name); return c?c.icon:"👕"; }
 function shopById(id){ return shops.find(s=>s.id===id); }
 function priceNum(item){ return parseFloat((item.price||'').replace(/[^0-9.]/g,''))||0; }
+// Shop owners often type just "25" instead of "$25" — this guarantees a $ always shows,
+// no matter how the price was typed or stored (old items included).
+function displayPrice(p){
+  const raw = (p||'').toString().trim();
+  if(!raw) return '';
+  return raw.includes('$') ? raw : '$'+raw;
+}
+// Used when SAVING a price (not just displaying it) so stored data is consistent from the start.
+const formatPrice = displayPrice;
+// Shop owners often just type "25" instead of "$25" — this makes sure a price always
+// displays with a $ sign, without forcing them to type the symbol themselves.
+function formatPrice(p){
+  p = (p||'').trim();
+  if(!p) return p;
+  if(!/^\$/.test(p)) p = '$' + p;
+  return p;
+}
 function thumbGradient(seed){
   const grads = [
     "linear-gradient(135deg,#E8F8FF,#D2EDFF)",
@@ -710,7 +727,7 @@ function renderItems(){
         ${thumbHTML(it)}
       </div>
       <div class="item-body">
-        <div class="item-price">${it.price}</div>
+        <div class="item-price">${displayPrice(it.price)}</div>
         <div class="item-name">${it.name}</div>
         <div class="item-meta">${it.category}</div>
       </div>
@@ -750,8 +767,8 @@ function openItemModal(id){
   it.views = (it.views||0)+1;
   const body = document.getElementById('itemModalBody');
   body.innerHTML = `
-    <div class="modal-hero" style="background:${photos.length?'#000':thumbGradient(it.id)};${oos?'filter:grayscale(0.4);':''}">
-      ${photos.length ? photos.map((p,i)=>`<img src="${p}" data-gidx="${i}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:${i===0?'block':'none'};">`).join("") : thumbHTML(it)}
+    <div class="modal-hero" style="background:${photos.length?'#F1ECDF':thumbGradient(it.id)};${oos?'filter:grayscale(0.4);':''}">
+      ${photos.length ? photos.map((p,i)=>`<img src="${p}" data-gidx="${i}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:${i===0?'block':'none'};">`).join("") : thumbHTML(it)}
       <button class="fav-heart ${fav?'active':''}" onclick="toggleFavorite(${it.id})">${fav?'♥':'♡'}</button>
       ${photos.length>1 ? `
         <button class="gallery-nav prev" onclick="galleryNav(-1)">‹</button>
@@ -761,7 +778,7 @@ function openItemModal(id){
     </div>
     <div class="modal-content">
       <h2>${it.name}</h2>
-      <div class="modal-price">${it.price}</div>
+      <div class="modal-price">${displayPrice(it.price)}</div>
       ${oos ? `<div style="background:var(--stone);color:var(--ink);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:inline-block;">Currently out of stock</div>` : ''}
       <div class="modal-meta">${it.description} <br>Category: ${it.category}</div>
       <div class="shop-box">
@@ -772,7 +789,7 @@ function openItemModal(id){
         <div id="reviewFormWrap"></div>
       </div>
       <div class="action-row">
-        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" from '+shop.name+' on Jad Online Store.')}" target="_blank" rel="noopener" onclick="trackWhatsappClick(${it.id})">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
+        ${oos ? `<button class="btn btn-outline" onclick="showToast('This item is currently out of stock. Ask the shop when it will be restocked.')">🔔 Ask about restock</button>` : (currentCustomerId ? `<a class="btn btn-wa" href="${waLink(shop.phone, 'Hello, I am interested in \"'+it.name+'\" ('+displayPrice(it.price)+') from '+shop.name+' on Jad Online Store.')}" target="_blank" rel="noopener" onclick="trackWhatsappClick(${it.id})">💬 WhatsApp shop</a><a class="btn btn-outline" href="tel:+${shop.phone}">📞 Call shop</a>` : `<button class="btn btn-outline" onclick="renderOwnerTabs('customer');document.getElementById('ownerOverlay').classList.add('open')">Sign in to contact</button>`)}
       </div>
     </div>
   `;
@@ -971,6 +988,7 @@ function submitShopRegistration(){
     showToast('Add at least one item with a name and price.');
     return;
   }
+  valid.forEach(it=>{ it.price = formatPrice(it.price); });
   pendingShops.push({
     id: Date.now(),
     name: shopDraft.name,
@@ -1159,7 +1177,7 @@ function renderShopReview(){
       <div class="review-box" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
         <div style="width:50px;height:50px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.name.length)}">${thumbHTML(it)}</div>
         <div style="flex:1;">
-          <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price}</div>
+          <div style="font-weight:600;font-size:12.5px;">${it.name} — ${displayPrice(it.price)}</div>
           <div style="font-size:11px;color:var(--muted);">${it.category}${!itemPhotos(it).length?' · <span style=\"color:var(--rust);\">⚠️ no photo</span>':''}</div>
         </div>
       </div>
@@ -1289,7 +1307,7 @@ function renderAllItemsTab(){
           <div style="width:48px;height:48px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id+i)}">${thumbHTML(it)}</div>
           <div style="flex:1;min-width:0;">
             <div class="sname" style="font-size:13px;">${it.name}</div>
-            <div style="font-size:11.5px;color:var(--muted);">${it.price} · ${it.category} · sold by ${shop?shop.name:'—'}</div>
+            <div style="font-size:11.5px;color:var(--muted);">${displayPrice(it.price)} · ${it.category} · sold by ${shop?shop.name:'—'}</div>
           </div>
           <button class="btn btn-outline btn-sm" style="color:var(--rust);border-color:var(--rust);flex-shrink:0;" onclick="deleteItem(${it.id})">Delete</button>
         </div>`;
@@ -1493,7 +1511,7 @@ function renderCustomerDashboard(){
       <div class="review-box" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;" onclick="closeModal('ownerOverlay');openItemModal(${it.id})">
         <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price}</div>
+          <div style="font-weight:600;font-size:12.5px;">${it.name} — ${displayPrice(it.price)}</div>
           <div style="font-size:11px;color:var(--muted);">${shop?shop.name:'—'}</div>
         </div>
         <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();toggleFavorite(${it.id});renderCustomerDashboard()">Remove</button>
@@ -1536,7 +1554,7 @@ function renderOwnerDashboard(){
         <div class="review-box" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;${it.inStock?'':'opacity:0.6;'}">
           <div style="width:46px;height:46px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:18px;color:#fff;background:${itemPhotos(it).length?'#000':thumbGradient(it.id)}">${thumbHTML(it)}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:12.5px;">${it.name} — ${it.price} ${it.inStock?'':'<span style="color:var(--rust);font-weight:700;">· OUT OF STOCK</span>'}</div>
+            <div style="font-weight:600;font-size:12.5px;">${it.name} — ${displayPrice(it.price)} ${it.inStock?'':'<span style="color:var(--rust);font-weight:700;">· OUT OF STOCK</span>'}</div>
             <div style="font-size:11px;color:var(--muted);">${it.category} · 👁 ${it.views||0} views · 💬 ${it.whatsappClicks||0} contacts</div>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:180px;">
@@ -1607,7 +1625,7 @@ function removeOwnerItemPhoto(photoIdx){
 function ownerSaveItem(){
   const name = document.getElementById('oiName').value.trim();
   const desc = document.getElementById('oiDesc').value.trim();
-  const price = document.getElementById('oiPrice').value.trim();
+  const price = formatPrice(document.getElementById('oiPrice').value.trim());
   const category = document.getElementById('oiCategory').value;
   if(!name || !price){
     showToast('Please enter at least a name and a price.');
