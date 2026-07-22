@@ -461,10 +461,12 @@ function currentStateObject(){
 }
 
 async function saveState(){
-  // Never write to the shared database before we've actually pulled the real data down —
-  // otherwise a save that fires early (slow connection, quick tap) could overwrite everyone's
-  // live shops/items with blank starting arrays.
-  if(!initialLoadComplete){ console.warn('saveState skipped — initial load not finished yet'); return; }
+  // If somehow a save fires before the initial load finished (e.g. a very fast tap),
+  // do one quick catch-up read first so we don't overwrite live data with blank arrays.
+  if(!initialLoadComplete){
+    await loadState();
+    initialLoadComplete = true;
+  }
   // Debounce/guard so rapid clicks don't fire overlapping writes
   if(isSaving){ saveQueued = true; return; }
   isSaving = true;
@@ -536,6 +538,9 @@ function reRenderEverything(){
 // here without needing a manual page refresh.
 function startSyncLoop(){
   setInterval(async ()=>{
+    // Don't let a background sync tick fetch stale data while a save (like an approval)
+    // is actively in flight — that stale data could overwrite the change before it lands.
+    if(isSaving) return;
     const changed = await loadState({ silent:true });
     if(changed) reRenderEverything();
   }, 4000);
@@ -1764,15 +1769,7 @@ renderItems();
 
 (async function init(){
   showSyncBadge("Loading…");
-  let attempts = 0;
-  while(!lastFetchOk && attempts < 6){
-    await loadState();
-    if(!lastFetchOk){
-      attempts++;
-      showSyncBadge("⚠️ Retrying connection…");
-      await new Promise(r=>setTimeout(r, 1200));
-    }
-  }
+  await loadState();
   initialLoadComplete = true;
   reRenderEverything();
   startSyncLoop();
