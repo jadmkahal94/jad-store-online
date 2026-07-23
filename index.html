@@ -558,29 +558,36 @@ async function loadPhotos(){
 // One-time cleanup: older shops/items still have their photos embedded directly inline
 // (from before photos got their own file). This moves any such photos into the separate
 // photo store and strips them out of the shop/item objects, so state.json shrinks for good.
-function migrateInlinePhotos(){
-  let migrated = false;
+// SAFE version: builds the photo-store additions WITHOUT touching shops/items yet, confirms
+// they actually saved to the server, and only THEN deletes the old inline copies. This is the
+// critical ordering fix — never delete data from one place until it's confirmed safe elsewhere.
+async function migrateInlinePhotosSafely(){
+  const additions = {};
+  let foundAny = false;
   items.forEach(it=>{
-    if(Array.isArray(it.photos) && it.photos.length){
-      if(!photoStore['item:'+it.id]) photoStore['item:'+it.id] = it.photos;
-      delete it.photos;
-      migrated = true;
-    }
-    if(it.photo){
-      const key = 'item:'+it.id;
-      if(!photoStore[key]) photoStore[key] = [it.photo];
-      delete it.photo;
-      migrated = true;
-    }
+    if(Array.isArray(it.photos) && it.photos.length){ additions['item:'+it.id] = it.photos; foundAny = true; }
+    else if(it.photo){ if(!additions['item:'+it.id]) additions['item:'+it.id] = [it.photo]; foundAny = true; }
   });
   shops.forEach(s=>{
-    if(s.cover){
-      if(!photoStore['shop:'+s.id]) photoStore['shop:'+s.id] = s.cover;
-      delete s.cover;
-      migrated = true;
-    }
+    if(s.cover){ additions['shop:'+s.id] = s.cover; foundAny = true; }
   });
-  return migrated;
+  if(!foundAny) return false;
+
+  const merged = { ...photoStore, ...additions };
+  const photosJson = JSON.stringify(merged);
+  try{
+    const res = await fetch(FIREBASE_URL + PHOTOS_PATH, { method:"PUT", headers:{"Content-Type":"application/json"}, body: photosJson });
+    if(!res.ok) throw new Error('photos save responded '+res.status);
+    // Confirmed saved — now, and only now, it's safe to remove the old inline copies.
+    photoStore = merged;
+    lastSavedPhotosSnapshot = photosJson;
+    items.forEach(it=>{ delete it.photos; delete it.photo; });
+    shops.forEach(s=>{ delete s.cover; });
+    return true;
+  }catch(e){
+    console.warn('Photo migration postponed — could not confirm the photos saved safely yet, so nothing was deleted.', e);
+    return false;
+  }
 }
 
 // One-time background cleanup: any photo still stored as raw base64 (from before imgbb
@@ -1916,14 +1923,14 @@ renderItems();
   showSyncBadge("Loading…");
   await loadState();                 // fast: names, prices, shop/item data only
   initialLoadComplete = true;
-  const migrated = migrateInlinePhotos(); // one-time: pull any old embedded photos out
   reRenderEverything();              // page is usable immediately — text/prices show now
-  loadPhotos().then(async ()=>{
-    reRenderEverything();            // photos arrive shortly after, in background
-    const uploadedAny = await migrateBase64PhotosToImgbb(); // quietly convert old photos to imgbb URLs
-    if(uploadedAny){ reRenderEverything(); saveState(); }
-  });
-  if(migrated) saveState();          // persist the lighter structure once, going forward
+  await loadPhotos();                // pull whatever's already safely stored FIRST
+  reRenderEverything();              // photos that were already saved show up now
+  const migrated = await migrateInlinePhotosSafely(); // only strips old inline copies once confirmed saved
+  if(migrated) reRenderEverything();
+  const uploadedAny = await migrateBase64PhotosToImgbb(); // quietly convert old photos to imgbb URLs
+  if(uploadedAny) reRenderEverything();
+  if(migrated || uploadedAny) saveState(); // persist the lighter structure, now that photos are safely stored
   startSyncLoop();
 })();
 </script>
