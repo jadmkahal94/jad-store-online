@@ -583,6 +583,28 @@ function migrateInlinePhotos(){
   return migrated;
 }
 
+// One-time background cleanup: any photo still stored as raw base64 (from before imgbb
+// hosting was added) gets uploaded to imgbb and swapped for its short URL. This runs
+// quietly after the page is already usable, so it never blocks or slows anything down.
+async function migrateBase64PhotosToImgbb(){
+  let migratedAny = false;
+  for(const key of Object.keys(photoStore)){
+    const val = photoStore[key];
+    if(typeof val === 'string' && val.startsWith('data:')){
+      try{ photoStore[key] = await uploadToImgbb(val); migratedAny = true; }
+      catch(e){ console.warn('Could not migrate photo', key, e); }
+    } else if(Array.isArray(val)){
+      for(let i=0;i<val.length;i++){
+        if(typeof val[i]==='string' && val[i].startsWith('data:')){
+          try{ val[i] = await uploadToImgbb(val[i]); migratedAny = true; }
+          catch(e){ console.warn('Could not migrate photo', key, i, e); }
+        }
+      }
+    }
+  }
+  return migratedAny;
+}
+
 // Re-render whatever is currently visible after a background sync picks up new data
 function reRenderEverything(){
   renderShopRail();
@@ -719,6 +741,21 @@ function compressImage(file, callback){
   };
   reader.onerror = ()=> showToast('Could not read that photo — try a different one.');
   reader.readAsDataURL(file);
+}
+
+// Uploads a compressed photo to imgbb and returns its public URL. Storing a short URL
+// instead of the full base64 image keeps the database tiny and photos load like any
+// normal website image (fast, cached by the browser after the first view).
+const IMGBB_API_KEY = "731ed3f87c437d85357b9f90d002b6d0";
+async function uploadToImgbb(dataUrl){
+  const base64 = dataUrl.split(',')[1] || dataUrl;
+  const formData = new FormData();
+  formData.append('key', IMGBB_API_KEY);
+  formData.append('image', base64);
+  const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
+  const json = await res.json();
+  if(json && json.success && json.data && json.data.url) return json.data.url;
+  throw new Error('imgbb upload failed');
 }
 
 /* ================= RENDER: shop rail ================= */
@@ -977,9 +1014,16 @@ function toggleCat(el){ el.classList.toggle('active'); }
 function previewShopCover(e){
   const file = e.target.files[0];
   if(!file) return;
-  compressImage(file, dataUrl=>{
-    shopCoverData = dataUrl;
-    document.getElementById('sCoverPreview').innerHTML = `<img src="${shopCoverData}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`;
+  document.getElementById('sCoverPreview').innerHTML = `<div style="font-size:12px;color:var(--muted);">Uploading photo…</div>`;
+  compressImage(file, async (dataUrl)=>{
+    try{
+      const url = await uploadToImgbb(dataUrl);
+      shopCoverData = url;
+      document.getElementById('sCoverPreview').innerHTML = `<img src="${shopCoverData}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`;
+    }catch(err){
+      document.getElementById('sCoverPreview').innerHTML = '';
+      showToast('⚠️ Photo upload failed — try again.');
+    }
   });
 }
 
@@ -1042,10 +1086,16 @@ function addItemEntryPhoto(e, idx){
   const file = e.target.files[0];
   if(!file) return;
   if((shopDraftItems[idx].photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
-  compressImage(file, dataUrl=>{
-    if(!shopDraftItems[idx].photos) shopDraftItems[idx].photos = [];
-    shopDraftItems[idx].photos.push(dataUrl);
-    renderItemsStep();
+  showToast('Uploading photo…');
+  compressImage(file, async (dataUrl)=>{
+    try{
+      const url = await uploadToImgbb(dataUrl);
+      if(!shopDraftItems[idx].photos) shopDraftItems[idx].photos = [];
+      shopDraftItems[idx].photos.push(url);
+      renderItemsStep();
+    }catch(err){
+      showToast('⚠️ Photo upload failed — try again.');
+    }
   });
 }
 function removeItemEntryPhoto(idx, photoIdx){
@@ -1744,10 +1794,16 @@ function ownerPreviewPhoto(e){
   const file = e.target.files[0];
   if(!file) return;
   if((ownerItemDraft.photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
-  compressImage(file, dataUrl=>{
-    if(!ownerItemDraft.photos) ownerItemDraft.photos = [];
-    ownerItemDraft.photos.push(dataUrl);
-    renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
+  showToast('Uploading photo…');
+  compressImage(file, async (dataUrl)=>{
+    try{
+      const url = await uploadToImgbb(dataUrl);
+      if(!ownerItemDraft.photos) ownerItemDraft.photos = [];
+      ownerItemDraft.photos.push(url);
+      renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
+    }catch(err){
+      showToast('⚠️ Photo upload failed — try again.');
+    }
   });
 }
 function removeOwnerItemPhoto(photoIdx){
@@ -1823,9 +1879,16 @@ let ownerCoverDraft = undefined;
 function ownerPreviewCover(e){
   const file = e.target.files[0];
   if(!file) return;
-  compressImage(file, dataUrl=>{
-    ownerCoverDraft = dataUrl;
-    document.getElementById('osCoverPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+  document.getElementById('osCoverPreview').innerHTML = `<div style="font-size:12px;color:var(--muted);">Uploading photo…</div>`;
+  compressImage(file, async (dataUrl)=>{
+    try{
+      const url = await uploadToImgbb(dataUrl);
+      ownerCoverDraft = url;
+      document.getElementById('osCoverPreview').innerHTML = `<img src="${url}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
+    }catch(err){
+      document.getElementById('osCoverPreview').innerHTML = '';
+      showToast('⚠️ Photo upload failed — try again.');
+    }
   });
 }
 function ownerSaveShop(){
@@ -1865,7 +1928,11 @@ renderItems();
   initialLoadComplete = true;
   const migrated = migrateInlinePhotos(); // one-time: pull any old embedded photos out
   reRenderEverything();              // page is usable immediately — text/prices show now
-  loadPhotos().then(()=>{ reRenderEverything(); }); // photos arrive shortly after, in background
+  loadPhotos().then(async ()=>{
+    reRenderEverything();            // photos arrive shortly after, in background
+    const uploadedAny = await migrateBase64PhotosToImgbb(); // quietly convert old photos to imgbb URLs
+    if(uploadedAny){ reRenderEverything(); saveState(); }
+  });
   if(migrated) saveState();          // persist the lighter structure once, going forward
   startSyncLoop();
 })();
