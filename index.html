@@ -1016,14 +1016,11 @@ function previewShopCover(e){
   if(!file) return;
   document.getElementById('sCoverPreview').innerHTML = `<div style="font-size:12px;color:var(--muted);">Uploading photo…</div>`;
   compressImage(file, async (dataUrl)=>{
-    try{
-      const url = await uploadToImgbb(dataUrl);
-      shopCoverData = url;
-      document.getElementById('sCoverPreview').innerHTML = `<img src="${shopCoverData}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`;
-    }catch(err){
-      document.getElementById('sCoverPreview').innerHTML = '';
-      showToast('⚠️ Photo upload failed — try again.');
-    }
+    let finalUrl = dataUrl; // fallback: keep the photo locally if the imgbb upload fails
+    try{ finalUrl = await uploadToImgbb(dataUrl); }
+    catch(err){ console.warn('imgbb upload failed, using local photo instead', err); }
+    shopCoverData = finalUrl;
+    document.getElementById('sCoverPreview').innerHTML = `<img src="${shopCoverData}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">`;
   });
 }
 
@@ -1088,14 +1085,12 @@ function addItemEntryPhoto(e, idx){
   if((shopDraftItems[idx].photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
   showToast('Uploading photo…');
   compressImage(file, async (dataUrl)=>{
-    try{
-      const url = await uploadToImgbb(dataUrl);
-      if(!shopDraftItems[idx].photos) shopDraftItems[idx].photos = [];
-      shopDraftItems[idx].photos.push(url);
-      renderItemsStep();
-    }catch(err){
-      showToast('⚠️ Photo upload failed — try again.');
-    }
+    let finalUrl = dataUrl; // fallback: keep the photo locally if the imgbb upload fails
+    try{ finalUrl = await uploadToImgbb(dataUrl); }
+    catch(err){ console.warn('imgbb upload failed, using local photo instead', err); }
+    if(!shopDraftItems[idx].photos) shopDraftItems[idx].photos = [];
+    shopDraftItems[idx].photos.push(finalUrl);
+    renderItemsStep();
   });
 }
 function removeItemEntryPhoto(idx, photoIdx){
@@ -1796,14 +1791,12 @@ function ownerPreviewPhoto(e){
   if((ownerItemDraft.photos||[]).length >= MAX_PHOTOS_PER_ITEM){ showToast('Maximum '+MAX_PHOTOS_PER_ITEM+' photos per item.'); return; }
   showToast('Uploading photo…');
   compressImage(file, async (dataUrl)=>{
-    try{
-      const url = await uploadToImgbb(dataUrl);
-      if(!ownerItemDraft.photos) ownerItemDraft.photos = [];
-      ownerItemDraft.photos.push(url);
-      renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
-    }catch(err){
-      showToast('⚠️ Photo upload failed — try again.');
-    }
+    let finalUrl = dataUrl; // fallback: keep the photo locally if the imgbb upload fails
+    try{ finalUrl = await uploadToImgbb(dataUrl); }
+    catch(err){ console.warn('imgbb upload failed, using local photo instead', err); }
+    if(!ownerItemDraft.photos) ownerItemDraft.photos = [];
+    ownerItemDraft.photos.push(finalUrl);
+    renderOwnerItemForm(ownerEditingItemId ? 'Edit item' : 'Add new item');
   });
 }
 function removeOwnerItemPhoto(photoIdx){
@@ -1881,14 +1874,11 @@ function ownerPreviewCover(e){
   if(!file) return;
   document.getElementById('osCoverPreview').innerHTML = `<div style="font-size:12px;color:var(--muted);">Uploading photo…</div>`;
   compressImage(file, async (dataUrl)=>{
-    try{
-      const url = await uploadToImgbb(dataUrl);
-      ownerCoverDraft = url;
-      document.getElementById('osCoverPreview').innerHTML = `<img src="${url}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
-    }catch(err){
-      document.getElementById('osCoverPreview').innerHTML = '';
-      showToast('⚠️ Photo upload failed — try again.');
-    }
+    let finalUrl = dataUrl; // fallback: keep the photo locally if the imgbb upload fails
+    try{ finalUrl = await uploadToImgbb(dataUrl); }
+    catch(err){ console.warn('imgbb upload failed, using local photo instead', err); }
+    ownerCoverDraft = finalUrl;
+    document.getElementById('osCoverPreview').innerHTML = `<img src="${finalUrl}" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;">`;
   });
 }
 function ownerSaveShop(){
